@@ -16,7 +16,8 @@ def format_walk_export(
     oid_from_display = oid_from
     oid_to_display = oid_to or oid_from
 
-    lines.append(f"Walk: proxim to {oid_to_display}, 7 - {device.get('ip_address', '')}:{device.get('port', 161)}- {version_str}")
+    target_label = device.get("name") or oid_from_display
+    lines.append(f"Walk: {target_label} to {oid_to_display}, 7 - {device.get('ip_address', '')}:{device.get('port', 161)}- {version_str}")
     lines.append("")
 
     lines.append("[SNMP Agent]")

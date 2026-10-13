@@ -6,15 +6,15 @@ async function waitForAlpine(page) {
 
 test.describe("5. Walk, Live Results, Filters, and Export QA Suite", () => {
   test.beforeEach(async ({ page, request }) => {
-    // Ensure PROXIM-MIB is loaded
+    // Ensure IF-MIB is loaded
     await request.post("http://127.0.0.1:8080/api/mibs/load", {
-      data: { module_name: "PROXIM-MIB" }
+      data: { module_name: "IF-MIB" }
     });
     await page.goto("/");
     await waitForAlpine(page);
 
-    // Select real test device 192.168.10.40
-    const deviceCard = page.locator('.device-card:has-text("192.168.10.40")').first();
+    // Select real test device 127.0.0.1
+    const deviceCard = page.locator('.device-card:has-text("127.0.0.1")').first();
     await deviceCard.click();
   });
 
@@ -100,7 +100,7 @@ test.describe("5. Walk, Live Results, Filters, and Export QA Suite", () => {
     await expect(preview).toBeVisible();
     await expect(preview).toContainText("[SNMP Agent]");
     await expect(preview).toContainText("[Query Results]");
-    await expect(preview).toContainText("192.168.10.40");
+    await expect(preview).toContainText("127.0.0.1");
 
     // Close export modal
     const closeBtn = exportModal.locator('button:has-text("Close")');
@@ -108,3 +108,5 @@ test.describe("5. Walk, Live Results, Filters, and Export QA Suite", () => {
     await expect(exportModal).not.toBeVisible();
   });
 });
+
+

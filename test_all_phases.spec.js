@@ -29,17 +29,17 @@ test.describe("5 Phases Enhanced Features Verification", () => {
     await expect(unloadBtn).toBeDisabled();
     await expect(reloadBtn).toBeDisabled();
 
-    // 3. Load PXM-SNMP.txt from path
-    await page.locator('input[x-model="mibSourceDir"]').fill("C:\\net-snmp\\share\\snmp\\mibs\\PXM-SNMP.txt");
+    // 3. Load IF-MIB.txt from path
+    await page.locator('input[x-model="mibSourceDir"]').fill("C:\\net-snmp\\share\\snmp\\mibs\\IF-MIB.txt");
     await page.locator('.form-group button:has-text("Load")').click();
 
     const toast = page.locator(".toast");
     await expect(toast).toBeVisible();
 
-    // 4. Select PROXIM-MIB from the list
-    const proximItem = page.locator('.mib-item:has-text("PROXIM-MIB")');
-    await expect(proximItem).toBeVisible();
-    await proximItem.click();
+    // 4. Select IF-MIB from the list
+    const mibItem = page.locator('.mib-item:has-text("IF-MIB")');
+    await expect(mibItem).toBeVisible();
+    await mibItem.click();
 
     // Now Unload and Reload should be enabled
     await expect(unloadBtn).toBeEnabled();
@@ -49,8 +49,8 @@ test.describe("5 Phases Enhanced Features Verification", () => {
     await unloadBtn.click();
     await expect(toast).toContainText("unloaded from application context");
 
-    // 6. Reload PROXIM-MIB again for further phase tests
-    await page.locator('input[x-model="mibSourceDir"]').fill("C:\\net-snmp\\share\\snmp\\mibs\\PXM-SNMP.txt");
+    // 6. Reload IF-MIB again for further phase tests
+    await page.locator('input[x-model="mibSourceDir"]').fill("C:\\net-snmp\\share\\snmp\\mibs\\IF-MIB.txt");
     await page.locator('.form-group button:has-text("Load")').click();
     await expect(toast).toBeVisible();
   });
@@ -76,14 +76,14 @@ test.describe("5 Phases Enhanced Features Verification", () => {
   });
 
   test("Phase 4: Type-Aware SNMP GET and SET operations on real device", async ({ page }) => {
-    // 1. Ensure target device (192.168.10.40) is selected
-    const deviceCard = page.locator('.device-card:has-text("192.168.10.40")');
+    // 1. Ensure target device (127.0.0.1) is selected
+    const deviceCard = page.locator('.device-card:has-text("127.0.0.1")');
     await expect(deviceCard).toBeVisible();
     await deviceCard.click();
 
     // 2. Test SNMP GET button
     const oidInput = page.locator('input[x-model="walkFrom"]');
-    await oidInput.fill("PROXIM-MIB::wirelessIfPropertiesRadioStatus.1");
+    await oidInput.fill("IF-MIB::ifAdminStatus.1");
 
     const getBtn = page.locator('button:has-text("GET")');
     await expect(getBtn).toBeEnabled();
@@ -115,13 +115,13 @@ test.describe("5 Phases Enhanced Features Verification", () => {
   });
 
   test("Phase 5: Full Walk and Export to txt file", async ({ page }) => {
-    // 1. Select device 192.168.10.40
-    const deviceCard = page.locator('.device-card:has-text("192.168.10.40")');
+    // 1. Select device 127.0.0.1
+    const deviceCard = page.locator('.device-card:has-text("127.0.0.1")');
     await deviceCard.click();
 
     // 2. Set From OID to 1.3.6.1.4.1.841
     const oidInput = page.locator('input[x-model="walkFrom"]');
-    await oidInput.fill("1.3.6.1.4.1.841");
+    await oidInput.fill("1.3.6.1.2.1.2");
 
     // 3. Select BulkWalk mode and Start Walk
     await page.locator('select[x-model="walkMode"]').selectOption("bulk");
@@ -153,3 +153,5 @@ test.describe("5 Phases Enhanced Features Verification", () => {
     await expect(exportModal).not.toBeVisible();
   });
 });
+
+

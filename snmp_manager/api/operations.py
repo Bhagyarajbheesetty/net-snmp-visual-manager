@@ -153,11 +153,11 @@ async def snmp_set_operation(request: SnmpSetRequest, db=Depends(get_db)):
 
 
 def _parse_snmp_output(output: str):
-    # e.g. PROXIM-MIB::wirelessIfPropertiesRadioStatus.1 = INTEGER: enable(1)
+    # e.g. IF-MIB::ifAdminStatus.1 = INTEGER: up(1)
     m = re.match(r"([^=]+)\s*=\s*([^:]+):\s*(.*)", output)
     if m:
         return m.group(1).strip(), m.group(2).strip(), m.group(3).strip()
-    # e.g. PROXIM-MIB::wirelessIfPropertiesRadioStatus.1 = ""
+    # e.g. IF-MIB::ifAdminStatus.1 = ""
     m2 = re.match(r"([^=]+)\s*=\s*(.*)", output)
     if m2:
         return m2.group(1).strip(), "Value", m2.group(2).strip()

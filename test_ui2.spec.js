@@ -1,4 +1,4 @@
-﻿const { test, expect } = require("@playwright/test");
+const { test, expect } = require("@playwright/test");
 
 async function waitForAlpine(page) {
   await page.waitForFunction(() => window.Alpine && window.Alpine.version);
@@ -12,3 +12,5 @@ test("page loads with all UI sections", async ({ page }) => {
   await expect(page.locator('.tab:has-text("MIB Modules")')).toBeVisible();
   await expect(page.locator('.tab:has-text("History")')).toBeVisible();
 });
+
+

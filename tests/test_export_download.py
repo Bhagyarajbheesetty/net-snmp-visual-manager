@@ -34,9 +34,9 @@ def test_save_export_content_writes_exact_text_to_selected_location():
     with tempfile.TemporaryDirectory() as tmpdir:
         target = os.path.join(tmpdir, "subfolder", "custom_walk_output.txt")
         sample_content = (
-            "Walk: proxim to 1.3.6.1.4.1.841, 7 - 192.168.1.100:161- SNMPv2c\n\n"
+            "Walk: system to 1.3.6.1.2.1.1, 7 - 192.168.1.100:161- SNMPv2c\n\n"
             "[Query Results]\n"
-            "sysDescr.0 (DisplayString) = Proxim Tsunami MP-10100\n"
+            "sysDescr.0 (DisplayString) = Linux Gateway Router\n"
             "sysUpTime.0 (TimeTicks) = 1-02:03:04.00\n"
         )
         saved_path = save_export_content_to_path(target, sample_content)
@@ -237,11 +237,11 @@ def test_end_to_end_save_and_locate_file_on_windows():
         chosen_filepath = os.path.join(user_chosen_folder, "My_BulkWalk_Export")  # Without .txt extension
         expected_filepath = os.path.join(user_chosen_folder, "My_BulkWalk_Export.txt")
         walk_text = (
-            "Walk: proxim to 1.3.6.1.4.1.841, 7 - 192.168.1.1:161- SNMPv2c\n\n"
+            "Walk: system to 1.3.6.1.2.1.1, 7 - 192.168.1.1:161- SNMPv2c\n\n"
             "[SNMP Agent]\n"
             "IP Address = 192.168.1.1\n\n"
             "[Query Results]\n"
-            "sysDescr.0 (DisplayString) = Proxim Wireless Unit\n"
+            "sysDescr.0 (DisplayString) = Linux Gateway Router\n"
             "ifNumber.0 (Integer32) = 4\n"
         )
 

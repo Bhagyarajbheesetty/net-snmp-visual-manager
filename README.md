@@ -21,9 +21,9 @@ A modern, standalone Windows desktop and web application for **Net-SNMP** with l
   - Interactive hierarchical OID tree and searchable MIB object catalog (`SYNTAX`, `MAX-ACCESS`, `STATUS`, `DESCRIPTION`, and enumeration maps).
 - **Syntax-Aware MIB Value Decoding**:
   - Automatically resolves raw SNMP responses against loaded MIB definitions:
-    - **Enumerated Integers (`Enum`)**: e.g., `fullGI-800nSec (2)`, `enable (1)`
+    - **Enumerated Integers (`Enum`)**: e.g., `up (1)`, `down (2)`, `enable (1)`
     - **`RowStatus`**: RFC 2579 labels (`active (1)`, `notInService (2)`, etc.)
-    - **`MacAddress` / `PhysAddress`**: Colon-separated hex formatting (`04:f5:f4:01:70:ff`)
+    - **`MacAddress` / `PhysAddress`**: Colon-separated hex formatting (`00:11:22:33:44:55`)
     - **`TimeTicks`**: Formatted duration (`days-hours:minutes:seconds.hundredths`)
     - **`DisplayString` & Multi-Index Tables**: Clean ASCII decoding and composite table index resolution.
 - **Resilient Live OID Walk & Export**:

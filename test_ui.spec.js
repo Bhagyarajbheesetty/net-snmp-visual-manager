@@ -1,4 +1,4 @@
-﻿const { test, expect } = require("@playwright/test");
+const { test, expect } = require("@playwright/test");
 
 async function waitForAlpine(page) {
   await page.waitForFunction(() => window.Alpine && window.Alpine.version);
@@ -14,3 +14,5 @@ test("add and cancel device form", async ({ page }) => {
   await page.click('button:has-text("Cancel")');
   await expect(form).not.toBeVisible();
 });
+
+

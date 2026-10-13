@@ -6,9 +6,9 @@ async function waitForAlpine(page) {
 
 test.describe("6. History, Theme, and Keyboard QA Suite", () => {
   test.beforeEach(async ({ page, request }) => {
-    // Ensure PROXIM-MIB is loaded
+    // Ensure IF-MIB is loaded
     await request.post("http://127.0.0.1:8080/api/mibs/load", {
-      data: { module_name: "PROXIM-MIB" }
+      data: { module_name: "IF-MIB" }
     });
     await page.goto("/");
     await waitForAlpine(page);
@@ -16,7 +16,7 @@ test.describe("6. History, Theme, and Keyboard QA Suite", () => {
 
   test("6.1 History tab records operations and Clear History empties table", async ({ page }) => {
     // First execute a GET operation to ensure at least one history item is logged
-    const deviceCard = page.locator('.device-card:has-text("192.168.10.40")').first();
+    const deviceCard = page.locator('.device-card:has-text("127.0.0.1")').first();
     await deviceCard.click();
 
     const oidInput = page.locator('input[x-model="walkFrom"]');
@@ -73,3 +73,5 @@ test.describe("6. History, Theme, and Keyboard QA Suite", () => {
     await expect(modal).not.toBeVisible();
   });
 });
+
+

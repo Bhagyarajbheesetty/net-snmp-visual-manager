@@ -6,9 +6,9 @@ async function waitForAlpine(page) {
 
 test.describe("History Management & Operation Concurrency / Stop Verification", () => {
   test.beforeEach(async ({ page, request }) => {
-    // Ensure PROXIM-MIB is loaded
+    // Ensure IF-MIB is loaded
     await request.post("http://127.0.0.1:8080/api/mibs/load", {
-      data: { module_name: "PROXIM-MIB" }
+      data: { module_name: "IF-MIB" }
     });
     await page.goto("http://127.0.0.1:8080/");
     await waitForAlpine(page);
@@ -68,3 +68,5 @@ test.describe("History Management & Operation Concurrency / Stop Verification", 
     await expect(stopBtn).toBeDisabled();
   });
 });
+
+

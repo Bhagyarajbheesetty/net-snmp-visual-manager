@@ -127,10 +127,10 @@ def test_idempotent_migration_from_legacy_files():
 
         # Create legacy managed_copies.json
         legacy_mib_data = {
-            "PROXIM-MIB": {
-                "module_name": "PROXIM-MIB",
-                "original_path": "C:\\Desktop\\PXM-SNMP.mib",
-                "copied_paths": ["C:\\net-snmp\\share\\snmp\\mibs\\PXM-SNMP.mib"],
+            "TEST-ENTERPRISE-MIB": {
+                "module_name": "TEST-ENTERPRISE-MIB",
+                "original_path": "C:\\Desktop\\TEST-ENTERPRISE.mib",
+                "copied_paths": ["C:\\net-snmp\\share\\snmp\\mibs\\TEST-ENTERPRISE.mib"],
                 "is_managed": True,
                 "loaded": True
             }
@@ -150,7 +150,7 @@ def test_idempotent_migration_from_legacy_files():
                 read_community TEXT
             )
         """)
-        conn.execute("INSERT INTO devices (id, name, ip_address, port, version, read_community) VALUES (42, 'Migrated-Device', '192.168.10.50', 161, 'v2c', 'public')")
+        conn.execute("INSERT INTO devices (id, name, ip_address, port, version, read_community) VALUES (42, 'Migrated-Device', '192.0.2.50', 161, 'v2c', 'public')")
         conn.commit()
         conn.close()
 
@@ -158,23 +158,23 @@ def test_idempotent_migration_from_legacy_files():
         reg = UnifiedRegistry(registry_file=reg_file)
 
         # Verify MIB record migrated
-        rec = reg.get_record("PROXIM-MIB")
+        rec = reg.get_record("TEST-ENTERPRISE-MIB")
         assert rec is not None
-        assert rec.module_name == "PROXIM-MIB"
+        assert rec.module_name == "TEST-ENTERPRISE-MIB"
         assert rec.loaded is True
 
         # Verify device record migrated
         dev = reg.get_device(42)
         assert dev is not None
         assert dev["name"] == "Migrated-Device"
-        assert dev["ip_address"] == "192.168.10.50"
+        assert dev["ip_address"] == "192.0.2.50"
 
         # Verify register.json persisted on disk
         assert os.path.isfile(reg_file)
         with open(reg_file, "r", encoding="utf-8") as f:
             data = json.load(f)
         assert "42" in data["devices"]
-        assert "PROXIM-MIB" in data["mibs"]
+        assert "TEST-ENTERPRISE-MIB" in data["mibs"]
         print("[PASS] test_idempotent_migration_from_legacy_files")
 
 

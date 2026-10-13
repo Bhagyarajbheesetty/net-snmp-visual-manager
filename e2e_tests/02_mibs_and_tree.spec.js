@@ -6,9 +6,9 @@ async function waitForAlpine(page) {
 
 test.describe("2. MIB Modules & Tree View QA Suite", () => {
   test.beforeEach(async ({ page, request }) => {
-    // Ensure PROXIM-MIB is loaded
+    // Ensure IF-MIB is loaded
     await request.post("http://127.0.0.1:8080/api/mibs/load", {
-      data: { module_name: "PROXIM-MIB" }
+      data: { module_name: "IF-MIB" }
     });
     await page.goto("/");
     await waitForAlpine(page);
@@ -31,19 +31,19 @@ test.describe("2. MIB Modules & Tree View QA Suite", () => {
     const toast = page.locator('.toast');
     await expect(toast).toBeVisible({ timeout: 5000 });
 
-    // Verify PROXIM-MIB module item exists
-    const proximItem = page.locator('.mib-item:has-text("PROXIM-MIB")').first();
-    await expect(proximItem).toBeVisible();
+    // Verify IF-MIB module item exists
+    const mibItem = page.locator('.mib-item:has-text("IF-MIB")').first();
+    await expect(mibItem).toBeVisible();
   });
 
   test("2.2 MIB Tree renders hierarchy, search filter, and node left-click", async ({ page }) => {
     const treeTab = page.locator('.tab:has-text("MIB Tree")');
     await treeTab.click();
 
-    // Verify proxim 841 node rendered in tree
-    const proximNode = page.locator('.tree-node-row:has-text("proxim")');
-    await expect(proximNode).toBeVisible({ timeout: 6000 });
-    await expect(proximNode).toContainText("(841)");
+    // Verify interfaces 841 node rendered in tree
+    const treeNode = page.locator('.tree-node-row:has-text("interfaces")');
+    await expect(treeNode).toBeVisible({ timeout: 6000 });
+    await expect(treeNode).toContainText("(2)");
 
     // Test Tree Search Input
     const searchInput = page.locator('input[x-model="treeSearch"]');
@@ -52,24 +52,24 @@ test.describe("2. MIB Modules & Tree View QA Suite", () => {
     await page.waitForTimeout(300);
 
     // Left-click on a tree node to populate Target OID
-    await proximNode.click();
+    await treeNode.click();
     const oidInput = page.locator('input[x-model="walkFrom"]');
     await expect(oidInput).toHaveValue(/1\.3\.6\.1\.4\.1\.841/);
   });
 
   test("2.3 MIB Tree right-click Context Menu and BulkWalk trigger", async ({ page }) => {
-    // Select real test device 192.168.10.40 first
-    const deviceCard = page.locator('.device-card:has-text("192.168.10.40")').first();
+    // Select real test device 127.0.0.1 first
+    const deviceCard = page.locator('.device-card:has-text("127.0.0.1")').first();
     await deviceCard.click();
 
     const treeTab = page.locator('.tab:has-text("MIB Tree")');
     await treeTab.click();
 
-    const proximNode = page.locator('.tree-node-row:has-text("proxim")');
-    await expect(proximNode).toBeVisible({ timeout: 6000 });
+    const treeNode = page.locator('.tree-node-row:has-text("interfaces")');
+    await expect(treeNode).toBeVisible({ timeout: 6000 });
 
-    // Right-click proxim node
-    await proximNode.click({ button: "right" });
+    // Right-click interfaces node
+    await treeNode.click({ button: "right" });
 
     // Verify context menu opens with required options
     const menu = page.locator(".context-menu");
@@ -100,3 +100,5 @@ test.describe("2. MIB Modules & Tree View QA Suite", () => {
     await expect(statusDot).toHaveClass(/status-stopped/, { timeout: 8000 });
   });
 });
+
+

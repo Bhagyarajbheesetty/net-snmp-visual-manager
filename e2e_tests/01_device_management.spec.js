@@ -10,20 +10,20 @@ test.describe("1. Device Management QA Suite", () => {
     await waitForAlpine(page);
   });
 
-  test("1.1 Select Device 192.168.10.40 updates Target Badges and Controls", async ({ page }) => {
-    const deviceCard = page.locator('.device-card:has-text("192.168.10.40")').first();
+  test("1.1 Select Device 127.0.0.1 updates Target Badges and Controls", async ({ page }) => {
+    const deviceCard = page.locator('.device-card:has-text("127.0.0.1")').first();
     await expect(deviceCard).toBeVisible();
     await deviceCard.click();
 
     // Verify prominent Target Pill in Header
     const headerTarget = page.locator('.header .target-badge');
     await expect(headerTarget).toBeVisible();
-    await expect(headerTarget).toContainText("192.168.10.40");
+    await expect(headerTarget).toContainText("127.0.0.1");
 
     // Verify Target Badge in Status Bar
     const statusBarTarget = page.locator('.toolbar .target-badge');
     await expect(statusBarTarget).toBeVisible();
-    await expect(statusBarTarget).toContainText("192.168.10.40");
+    await expect(statusBarTarget).toContainText("127.0.0.1");
 
     // Verify opTimeout and opRetries inputs are loaded
     const timeoutInput = page.locator('input[title="Timeout in seconds"]');
@@ -32,8 +32,8 @@ test.describe("1. Device Management QA Suite", () => {
     await expect(retriesInput).toBeVisible();
   });
 
-  test("1.2 Test Connection on 192.168.10.40 validates live SNMP connectivity", async ({ page }) => {
-    const deviceCard = page.locator('.device-card:has-text("192.168.10.40")').first();
+  test("1.2 Test Connection on 127.0.0.1 validates live SNMP connectivity", async ({ page }) => {
+    const deviceCard = page.locator('.device-card:has-text("127.0.0.1")').first();
     await expect(deviceCard).toBeVisible();
 
     const testBtn = deviceCard.locator('button:has-text("Test")');
@@ -97,3 +97,5 @@ test.describe("1. Device Management QA Suite", () => {
     await expect(updatedCard).not.toBeVisible({ timeout: 5000 });
   });
 });
+
+

@@ -57,24 +57,26 @@ snmp_manager/
 Exports match the net-snmp text format:
 
 ```
-Walk: proxim to enterprises.842, 7 - 169.254.128.1:161- SNMPv2c
+Walk: system to 1.3.6.1.2.1.1, 7 - 192.168.1.1:161- SNMPv2c
 
 [SNMP Agent]
-IP Address = 169.254.128.1
+IP Address = 192.168.1.1
 Port = 161
 ...
 
 [Query Parameters]
 Type = Walk (6)
-From = 1.3.6.1.4.1.841
-To = 1.3.6.1.4.1.842
+From = 1.3.6.1.2.1.1
+To = 1.3.6.1.2.1.1
 Start Time = 09-06-2026 18:07:22
 
 [Query Results]
-Response Time = 09-06-2026 18:12:35
+Response Time = 09-06-2026 18:07:23
 Response Status = End of Walk
 
-wirelessIfPropertiesTableIndex.1 (Unsigned32) = 1
+sysDescr.0 (DisplayString) = Linux Gateway Router 5.15
+sysObjectID.0 (OID) = 1.3.6.1.4.1.8072.3.2.10
+sysUpTime.0 (TimeTicks) = 12-04:33:20.00
 ...
 ```
 

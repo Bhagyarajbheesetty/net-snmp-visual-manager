@@ -6,9 +6,9 @@ async function waitForAlpine(page) {
 
 test.describe("3. MIB Objects & Inspector QA Suite", () => {
   test.beforeEach(async ({ page, request }) => {
-    // Ensure PROXIM-MIB is loaded
+    // Ensure IF-MIB is loaded
     await request.post("http://127.0.0.1:8080/api/mibs/load", {
-      data: { module_name: "PROXIM-MIB" }
+      data: { module_name: "IF-MIB" }
     });
     await page.goto("/");
     await waitForAlpine(page);
@@ -16,7 +16,7 @@ test.describe("3. MIB Objects & Inspector QA Suite", () => {
 
   test("3.1 Search objects and auto-import OID & Type into controls", async ({ page }) => {
     // Select real test device first while on Devices tab
-    const deviceCard = page.locator('.device-card:has-text("192.168.10.40")').first();
+    const deviceCard = page.locator('.device-card:has-text("127.0.0.1")').first();
     await deviceCard.click();
 
     const objectsTab = page.locator('.tab:has-text("Objects")');
@@ -60,3 +60,5 @@ test.describe("3. MIB Objects & Inspector QA Suite", () => {
     await expect(setModal).not.toBeVisible();
   });
 });
+
+

@@ -10,7 +10,7 @@ from snmp.client import DeviceConfig, SNMPClient, MIBLoader, VarBind
 from snmp.walk import WalkSession
 from export.formatter import format_walk_export
 
-SYNTHETIC_PROXIM_MIB = """
+SYNTHETIC_TEST_MIB = """
 TEST-DECODE-MIB DEFINITIONS ::= BEGIN
 
 IMPORTS
@@ -19,21 +19,21 @@ IMPORTS
     DisplayString, MacAddress, RowStatus
         FROM SNMPv2-TC;
 
-proxim MODULE-IDENTITY
+testEnterprise MODULE-IDENTITY
     LAST-UPDATED "202610120000Z"
     ORGANIZATION "Test Organization"
     CONTACT-INFO "support@example.com"
     DESCRIPTION  "Synthetic MIB for value decoding verification"
     ::= { enterprises 841 }
 
-proximObjects         OBJECT IDENTIFIER ::= { proxim 1 }
-proximSub1            OBJECT IDENTIFIER ::= { proximObjects 1 }
-proximWireless        OBJECT IDENTIFIER ::= { proximSub1 1 }
-proximWirelessSub1    OBJECT IDENTIFIER ::= { proximWireless 1 }
-proximWirelessSub2    OBJECT IDENTIFIER ::= { proximWirelessSub1 1 }
+testObjects         OBJECT IDENTIFIER ::= { testEnterprise 1 }
+testSub1            OBJECT IDENTIFIER ::= { testObjects 1 }
+testWireless        OBJECT IDENTIFIER ::= { testSub1 1 }
+testWirelessSub1    OBJECT IDENTIFIER ::= { testWireless 1 }
+testWirelessSub2    OBJECT IDENTIFIER ::= { testWirelessSub1 1 }
 
 -- 1.3.6.1.4.1.841.1.1.1.1.1.1.1
-wirelessIfPropertiesEntry OBJECT IDENTIFIER ::= { proximWirelessSub2 1 1 }
+wirelessIfPropertiesEntry OBJECT IDENTIFIER ::= { testWirelessSub2 1 1 }
 
 wirelessIfPropertiesTableIndex OBJECT-TYPE
     SYNTAX      Unsigned32
@@ -92,7 +92,7 @@ wirelessIfCellSize OBJECT-TYPE
     ::= { wirelessIfPropertiesEntry 16 }
 
 -- 1.3.6.1.4.1.841.1.1.1.1.1.2.1.8
-wirelessIf11nEntry OBJECT IDENTIFIER ::= { proximWirelessSub2 2 1 }
+wirelessIf11nEntry OBJECT IDENTIFIER ::= { testWirelessSub2 2 1 }
 
 wirelessIf11nPropertiesGuardInterval OBJECT-TYPE
     SYNTAX      INTEGER { shortGI-400nSec(1), fullGI-800nSec(2) }
@@ -102,7 +102,7 @@ wirelessIf11nPropertiesGuardInterval OBJECT-TYPE
     ::= { wirelessIf11nEntry 8 }
 
 -- 1.3.6.1.4.1.841.1.1.1.1.1.4.1.19
-wirelessIfWorpEntry OBJECT IDENTIFIER ::= { proximWirelessSub2 4 1 }
+wirelessIfWorpEntry OBJECT IDENTIFIER ::= { testWirelessSub2 4 1 }
 
 wirelessIfWORPIntfMacAddress OBJECT-TYPE
     SYNTAX      MacAddress
@@ -112,7 +112,7 @@ wirelessIfWORPIntfMacAddress OBJECT-TYPE
     ::= { wirelessIfWorpEntry 19 }
 
 -- 1.3.6.1.4.1.841.1.1.1.1.1.7.1.25
-linkProfileEntry OBJECT IDENTIFIER ::= { proximWirelessSub2 7 1 }
+linkProfileEntry OBJECT IDENTIFIER ::= { testWirelessSub2 7 1 }
 
 linkProfileTableEntryStatus OBJECT-TYPE
     SYNTAX      RowStatus
@@ -122,7 +122,7 @@ linkProfileTableEntryStatus OBJECT-TYPE
     ::= { linkProfileEntry 25 }
 
 -- 1.3.6.1.4.1.841.1.1.1.3.4.1.1.1
-qosMappingEntry OBJECT IDENTIFIER ::= { proximWireless 3 4 1 1 }
+qosMappingEntry OBJECT IDENTIFIER ::= { testWireless 3 4 1 1 }
 
 l2l3QoSDot1DToDot1pMappingTableIndex OBJECT-TYPE
     SYNTAX      Unsigned32
@@ -132,7 +132,7 @@ l2l3QoSDot1DToDot1pMappingTableIndex OBJECT-TYPE
     ::= { qosMappingEntry 1 }
 
 -- 1.3.6.1.4.1.841.1.1.3.19.1.1.9
-sx3IfEntry OBJECT IDENTIFIER ::= { proximSub1 3 19 1 1 }
+sx3IfEntry OBJECT IDENTIFIER ::= { testSub1 3 19 1 1 }
 
 sx3IfLastChange OBJECT-TYPE
     SYNTAX      TimeTicks
@@ -151,20 +151,16 @@ def get_test_client():
     global _temp_mib_dir
     from snmp.mib import mib_manager
 
-    env_mib = os.environ.get("TEST_MIB_PATH")
-    if env_mib and os.path.isfile(env_mib):
-        if "PROXIM-MIB" not in mib_manager._active_modules:
-            mib_manager.load_file(env_mib)
-    elif "TEST-DECODE-MIB" not in mib_manager._active_modules and "PROXIM-MIB" not in mib_manager._active_modules:
+    if "TEST-DECODE-MIB" not in mib_manager._active_modules:
         if _temp_mib_dir is None:
             _temp_mib_dir = tempfile.TemporaryDirectory()
         mib_path = os.path.join(_temp_mib_dir.name, "TEST-DECODE-MIB.mib")
         with open(mib_path, "w", encoding="utf-8") as f:
-            f.write(SYNTHETIC_PROXIM_MIB)
+            f.write(SYNTHETIC_TEST_MIB)
         mib_manager.load_file(mib_path)
 
     loader = mib_manager.get_loader()
-    config = DeviceConfig(ip="192.168.10.40")
+    config = DeviceConfig(ip="192.0.2.1")
     client = SNMPClient(config, mib_loader=loader)
     return client
 
@@ -200,7 +196,7 @@ def test_enum_decoding_guard_interval():
     assert vb.display_value == "fullGI-800nSec (2)"
 
     session = WalkSession(id="test-enum", device_id=1, oid_from=oid, oid_to=None, status="completed", results=[vb])
-    device = {"ip_address": "192.168.10.40", "port": 161, "version": "v3"}
+    device = {"ip_address": "192.0.2.1", "port": 161, "version": "v3"}
     exported = format_walk_export(device, session, oid)
     assert "wirelessIf11nPropertiesGuardInterval.1 (Enum) = fullGI-800nSec (2)" in exported
     print("[PASS] test_enum_decoding_guard_interval")
@@ -223,7 +219,7 @@ def test_enum_decoding_unknown_value():
     assert vb.display_value == "(0) is not in any MIB!"
 
     session = WalkSession(id="test-unknown-enum", device_id=1, oid_from=oid, oid_to=None, status="completed", results=[vb])
-    device = {"ip_address": "192.168.10.40", "port": 161, "version": "v3"}
+    device = {"ip_address": "192.0.2.1", "port": 161, "version": "v3"}
     exported = format_walk_export(device, session, oid)
     assert "wirelessIfCellSize.1 (Enum) = (0) is not in any MIB!" in exported
     print("[PASS] test_enum_decoding_unknown_value")
@@ -245,7 +241,7 @@ def test_raw_integer_values_non_enumerated():
     assert vb.display_value == "80"
 
     session = WalkSession(id="test-int", device_id=1, oid_from=oid, oid_to=None, status="completed", results=[vb])
-    device = {"ip_address": "192.168.10.40", "port": 161, "version": "v3"}
+    device = {"ip_address": "192.0.2.1", "port": 161, "version": "v3"}
     exported = format_walk_export(device, session, oid)
     assert "wirelessIfCurrentChannelBandwidth.1 (Unsigned32) = 80" in exported
     print("[PASS] test_raw_integer_values_non_enumerated")
@@ -277,7 +273,7 @@ def test_row_status_decoding():
     assert vb0.display_value == "(0) is not in any MIB!"
 
     session = WalkSession(id="test-rowstatus", device_id=1, oid_from=oid_base, oid_to=None, status="completed", results=[vb1, vb2, vb0])
-    device = {"ip_address": "192.168.10.40", "port": 161, "version": "v3"}
+    device = {"ip_address": "192.0.2.1", "port": 161, "version": "v3"}
     exported = format_walk_export(device, session, oid_base)
     assert "linkProfileTableEntryStatus.1.1 (RowStatus) = active (1)" in exported
     assert "linkProfileTableEntryStatus.1.2 (RowStatus) = notInService (2)" in exported
@@ -290,7 +286,7 @@ def test_mac_address_colon_formatting():
     client = get_test_client()
     # wirelessIfWORPIntfMacAddress has syntax MacAddress
     oid = "1.3.6.1.4.1.841.1.1.1.1.1.4.1.19.1"
-    raw_mac = bytes([0x04, 0xf5, 0xf4, 0x01, 0x70, 0xff])
+    raw_mac = bytes([0x00, 0x11, 0x22, 0x33, 0x44, 0x55])
     vbs = client._process_varbinds(None, None, None, [(oid, OctetString(raw_mac))])
     assert len(vbs) == 1
     vb = vbs[0]
@@ -298,9 +294,9 @@ def test_mac_address_colon_formatting():
     assert vb.name == "wirelessIfWORPIntfMacAddress"
     assert vb.index == "1"
     assert vb.type == "OctetString"
-    assert vb.value == "0x04f5f40170ff"
+    assert vb.value == "0x001122334455"
     assert vb.display_type == "MacAddress"
-    assert vb.display_value == "04:f5:f4:01:70:ff"
+    assert vb.display_value == "00:11:22:33:44:55"
 
     # All-zero MAC
     zero_mac = bytes([0x00, 0x00, 0x00, 0x00, 0x00, 0x00])
@@ -308,9 +304,9 @@ def test_mac_address_colon_formatting():
     assert vb_zero.display_value == "00:00:00:00:00:00"
 
     session = WalkSession(id="test-mac", device_id=1, oid_from=oid, oid_to=None, status="completed", results=[vb])
-    device = {"ip_address": "192.168.10.40", "port": 161, "version": "v3"}
+    device = {"ip_address": "192.0.2.1", "port": 161, "version": "v3"}
     exported = format_walk_export(device, session, oid)
-    assert "wirelessIfWORPIntfMacAddress.1 (MacAddress) = 04:f5:f4:01:70:ff" in exported
+    assert "wirelessIfWORPIntfMacAddress.1 (MacAddress) = 00:11:22:33:44:55" in exported
     print("[PASS] test_mac_address_colon_formatting")
 
 
@@ -330,7 +326,7 @@ def test_display_string_decoding():
     assert vb.display_value == "HE"
 
     session = WalkSession(id="test-ds", device_id=1, oid_from=oid, oid_to=None, status="completed", results=[vb])
-    device = {"ip_address": "192.168.10.40", "port": 161, "version": "v3"}
+    device = {"ip_address": "192.0.2.1", "port": 161, "version": "v3"}
     exported = format_walk_export(device, session, oid)
     assert "wirelessIfOperationalMode.1 (DisplayString) = HE" in exported
     print("[PASS] test_display_string_decoding")
@@ -359,7 +355,7 @@ def test_timeticks_formatting():
     assert vb_comp.display_value == "1-1:1:1.23"
 
     session = WalkSession(id="test-tt", device_id=1, oid_from=oid, oid_to=None, status="completed", results=[vb0])
-    device = {"ip_address": "192.168.10.40", "port": 161, "version": "v3"}
+    device = {"ip_address": "192.0.2.1", "port": 161, "version": "v3"}
     exported = format_walk_export(device, session, oid)
     assert "sx3IfLastChange.1 (TimeTicks) = 0-0:0:0.00" in exported
     print("[PASS] test_timeticks_formatting")
@@ -380,7 +376,7 @@ def test_multi_index_table_resolution():
     assert vb.display_value == "0"
 
     session = WalkSession(id="test-multi-idx", device_id=1, oid_from=oid, oid_to=None, status="completed", results=[vb])
-    device = {"ip_address": "192.168.10.40", "port": 161, "version": "v3"}
+    device = {"ip_address": "192.0.2.1", "port": 161, "version": "v3"}
     exported = format_walk_export(device, session, oid)
     assert "l2l3QoSDot1DToDot1pMappingTableIndex.1.0 (Unsigned32) = 0" in exported
     print("[PASS] test_multi_index_table_resolution")
@@ -426,6 +422,17 @@ def test_bulk_matching_against_nudesign_export_samples():
     print("[PASS] test_bulk_matching_against_nudesign_export_samples")
 
 
+def test_null_padded_octet_string_decoding():
+    """11. Test OctetString containing trailing null bytes decodes cleanly into ASCII string instead of hex zeros."""
+    client = get_test_client()
+    raw_payload = b"75,75,75,75,72,72,70,70" + (b"\x00" * 150)
+    oid = "1.3.6.1.4.1.841.1.1.1.1.1.1.1.6.1"
+    vb = client._process_varbinds(None, None, None, [(oid, OctetString(raw_payload))])[0]
+    assert vb.value == "75,75,75,75,72,72,70,70"
+    assert vb.display_value == "75,75,75,75,72,72,70,70"
+    print("[PASS] test_null_padded_octet_string_decoding")
+
+
 if __name__ == "__main__":
     print("============================================================")
     print("RUNNING MIB VALUE DECODING TEST SUITE")
@@ -441,8 +448,9 @@ if __name__ == "__main__":
         test_multi_index_table_resolution()
         test_raw_values_remain_separated_from_display_values()
         test_bulk_matching_against_nudesign_export_samples()
+        test_null_padded_octet_string_decoding()
         print("============================================================")
-        print("ALL 10 MIB VALUE DECODING TESTS PASSED SUCCESSFULLY!")
+        print("ALL 11 MIB VALUE DECODING TESTS PASSED SUCCESSFULLY!")
         print("============================================================")
     finally:
         cleanup_test_mib()

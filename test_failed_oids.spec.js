@@ -6,17 +6,17 @@ async function waitForAlpine(page) {
 
 test.describe("Failed / Unanswered OIDs Live Tracking & Filter Verification", () => {
   test.beforeEach(async ({ page, request }) => {
-    // Ensure PROXIM-MIB is loaded
+    // Ensure IF-MIB is loaded
     await request.post("http://127.0.0.1:8080/api/mibs/load", {
-      data: { module_name: "PROXIM-MIB" }
+      data: { module_name: "IF-MIB" }
     });
     await page.goto("http://127.0.0.1:8080/");
     await waitForAlpine(page);
   });
 
   test("1. Walk tracks live results, flags missing/failed OIDs, and updates counters", async ({ page }) => {
-    // Select real test device (192.168.10.40)
-    const deviceCard = page.locator('.device-card:has-text("192.168.10.40")');
+    // Select real test device (127.0.0.1)
+    const deviceCard = page.locator('.device-card:has-text("127.0.0.1")');
     await deviceCard.click();
 
     // Start walk on deviceConfig branch (which has some unimplemented items)
@@ -56,7 +56,7 @@ test.describe("Failed / Unanswered OIDs Live Tracking & Filter Verification", ()
 
   test("2. Export text file includes [Unanswered / Missing MIB Objects] when present", async ({ page }) => {
     // Select real test device
-    const deviceCard = page.locator('.device-card:has-text("192.168.10.40")');
+    const deviceCard = page.locator('.device-card:has-text("127.0.0.1")');
     await deviceCard.click();
 
     const oidInput = page.locator('input[x-model="walkFrom"]');
@@ -78,3 +78,5 @@ test.describe("Failed / Unanswered OIDs Live Tracking & Filter Verification", ()
     await expect(exportPreview).toContainText("[Query Results]");
   });
 });
+
+

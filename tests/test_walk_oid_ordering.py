@@ -24,11 +24,11 @@ def test_walk_all_succeed_preserves_original_order():
     )
 
     raw_items = [
-        VarBind(oid="1.3.6.1.4.1.841.1", name="proximSystem", type="DisplayString", value="Proxim OS", seq=1),
-        VarBind(oid="1.3.6.1.4.1.841.2", name="proximHardware", type="DisplayString", value="Tsunami MP", seq=2),
-        VarBind(oid="1.3.6.1.4.1.841.3", name="proximWireless", type="Integer32", value="1", seq=3),
-        VarBind(oid="1.3.6.1.4.1.841.4", name="proximEthernet", type="Integer32", value="2", seq=4),
-        VarBind(oid="1.3.6.1.4.1.841.5", name="proximStatus", type="Integer32", value="1", seq=5),
+        VarBind(oid="1.3.6.1.4.1.841.1", name="deviceSystem", type="DisplayString", value="Router OS", seq=1),
+        VarBind(oid="1.3.6.1.4.1.841.2", name="deviceHardware", type="DisplayString", value="Enterprise AP", seq=2),
+        VarBind(oid="1.3.6.1.4.1.841.3", name="deviceWireless", type="Integer32", value="1", seq=3),
+        VarBind(oid="1.3.6.1.4.1.841.4", name="deviceEthernet", type="Integer32", value="2", seq=4),
+        VarBind(oid="1.3.6.1.4.1.841.5", name="deviceStatus", type="Integer32", value="1", seq=5),
     ]
     session.results = list(raw_items)
 
@@ -38,18 +38,18 @@ def test_walk_all_succeed_preserves_original_order():
         assert vb.seq == i + 1
         assert vb.status == "ok"
 
-    device = {"ip_address": "192.168.10.40", "port": 161, "version": "v2c", "read_community": "public"}
+    device = {"ip_address": "192.0.2.1", "port": 161, "version": "v2c", "read_community": "public"}
     exported = format_walk_export(device, session, session.oid_from, session.oid_to)
 
     # Verify export output order
     results_section = exported.split("[Query Results]")[1]
     lines = [l.strip() for l in results_section.splitlines() if l.strip() and not l.startswith("Response Time =") and not l.startswith("Response Status =")]
     assert len(lines) == 5
-    assert lines[0] == "proximSystem (DisplayString) = Proxim OS"
-    assert lines[1] == "proximHardware (DisplayString) = Tsunami MP"
-    assert lines[2] == "proximWireless (Integer32) = 1"
-    assert lines[3] == "proximEthernet (Integer32) = 2"
-    assert lines[4] == "proximStatus (Integer32) = 1"
+    assert lines[0] == "deviceSystem (DisplayString) = Router OS"
+    assert lines[1] == "deviceHardware (DisplayString) = Enterprise AP"
+    assert lines[2] == "deviceWireless (Integer32) = 1"
+    assert lines[3] == "deviceEthernet (Integer32) = 2"
+    assert lines[4] == "deviceStatus (Integer32) = 1"
     print("[PASS] test_walk_all_succeed_preserves_original_order")
 
 
@@ -65,20 +65,20 @@ def test_timeout_in_middle_retains_position():
 
     # OID 1 succeeds, OID 2 times out, OID 3 succeeds
     session.results = [
-        VarBind(oid="1.3.6.1.4.1.841.1", name="proximSystem", type="DisplayString", value="Proxim OS", seq=1),
-        VarBind(oid="1.3.6.1.4.1.841.2", name="proximSecurity", type="UNANSWERED", value="Request timed out", status="failed", error_msg="Timeout", seq=2),
-        VarBind(oid="1.3.6.1.4.1.841.3", name="proximWireless", type="Integer32", value="1", seq=3),
+        VarBind(oid="1.3.6.1.4.1.841.1", name="deviceSystem", type="DisplayString", value="Router OS", seq=1),
+        VarBind(oid="1.3.6.1.4.1.841.2", name="deviceSecurity", type="UNANSWERED", value="Request timed out", status="failed", error_msg="Timeout", seq=2),
+        VarBind(oid="1.3.6.1.4.1.841.3", name="deviceWireless", type="Integer32", value="1", seq=3),
     ]
 
     # Verify positions in results collection
-    assert session.results[0].name == "proximSystem"
-    assert session.results[1].name == "proximSecurity"
+    assert session.results[0].name == "deviceSystem"
+    assert session.results[1].name == "deviceSecurity"
     assert session.results[1].status == "failed"
     assert session.results[1].error_msg == "Timeout"
-    assert session.results[2].name == "proximWireless"
+    assert session.results[2].name == "deviceWireless"
     assert session.results[2].status == "ok"
 
-    device = {"ip_address": "192.168.10.40", "port": 161, "version": "v2c"}
+    device = {"ip_address": "192.0.2.1", "port": 161, "version": "v2c"}
     exported = format_walk_export(device, session, session.oid_from, session.oid_to)
 
     # Failed OID must NOT be grouped at the bottom under separate section
@@ -88,9 +88,9 @@ def test_timeout_in_middle_retains_position():
     results_section = exported.split("[Query Results]")[1]
     lines = [l.strip() for l in results_section.splitlines() if l.strip() and not l.startswith("Response Time =") and not l.startswith("Response Status =")]
     assert len(lines) == 3
-    assert lines[0] == "proximSystem (DisplayString) = Proxim OS"
-    assert lines[1] == "proximSecurity (FAILED) = Timeout"
-    assert lines[2] == "proximWireless (Integer32) = 1"
+    assert lines[0] == "deviceSystem (DisplayString) = Router OS"
+    assert lines[1] == "deviceSecurity (FAILED) = Timeout"
+    assert lines[2] == "deviceWireless (Integer32) = 1"
     print("[PASS] test_timeout_in_middle_retains_position")
 
 
@@ -118,7 +118,7 @@ def test_no_response_followed_by_success_subsequent_order_preserved():
     assert session.results[2].status == "ok"
     assert session.results[3].status == "ok"
 
-    device = {"ip_address": "192.168.10.40", "port": 161, "version": "v2c"}
+    device = {"ip_address": "192.0.2.1", "port": 161, "version": "v2c"}
     exported = format_walk_export(device, session, session.oid_from, session.oid_to)
 
     lines = [l.strip() for l in exported.splitlines() if "dev" in l]
@@ -153,7 +153,7 @@ def test_consecutive_failures_and_intermittent_timeouts():
     assert [r.status for r in session.results] == expected_statuses
     assert [r.seq for r in session.results] == [1, 2, 3, 4, 5, 6]
 
-    device = {"ip_address": "192.168.10.40", "port": 161, "version": "v2c"}
+    device = {"ip_address": "192.0.2.1", "port": 161, "version": "v2c"}
     exported = format_walk_export(device, session, session.oid_from, session.oid_to)
 
     lines = [l.strip() for l in exported.splitlines() if "node" in l]
@@ -194,7 +194,7 @@ def test_async_out_of_order_responses_preserve_sequence():
     assert sorted_results[1].status == "failed"
 
     # Export sorting logic
-    device = {"ip_address": "192.168.10.40", "port": 161, "version": "v2c"}
+    device = {"ip_address": "192.0.2.1", "port": 161, "version": "v2c"}
     exported = format_walk_export(device, session, session.oid_from, session.oid_to)
     lines = [l.strip() for l in exported.splitlines() if "item" in l]
     assert lines == [
@@ -266,7 +266,7 @@ def test_export_no_bottom_grouping_and_no_numeric_oid():
         VarBind(oid="1.3.6.1.4.1.841.3", name="prop3", type="Gauge32", value="30", seq=3),
     ]
 
-    device = {"ip_address": "192.168.10.40", "port": 161, "version": "v2c"}
+    device = {"ip_address": "192.0.2.1", "port": 161, "version": "v2c"}
     exported = format_walk_export(device, session, session.oid_from, session.oid_to)
 
     # 1. No separate bottom group
@@ -355,7 +355,7 @@ def test_fastapi_walk_endpoints_and_export_response():
     else:
         new_dev = managed_registry.add_device({
             "name": "TestDev",
-            "ip_address": "10.254.254.1",
+            "ip_address": "192.0.2.1",
             "port": 161,
             "version": "v2c",
             "read_community": "public",

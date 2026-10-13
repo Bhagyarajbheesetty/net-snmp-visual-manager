@@ -813,6 +813,13 @@ class SNMPClient:
 
     def _format_value(self, val) -> str:
         try:
+            # Smart decoding for null-padded / null-terminated C-strings in OctetString
+            if hasattr(val, "asOctets"):
+                raw_bytes = val.asOctets()
+                if b"\x00" in raw_bytes:
+                    text_part = raw_bytes.split(b"\x00")[0]
+                    if len(text_part) > 0 and all(32 <= b <= 126 or b in (9, 10, 13) for b in text_part):
+                        return text_part.decode("utf-8", errors="replace")
             if hasattr(val, "prettyPrint"):
                 return val.prettyPrint()
         except Exception:
