@@ -1,0 +1,50 @@
+# Python bytecode & caches
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+*.pyd
+
+# Virtual environments
+.venv/
+venv/
+env/
+ENV/
+
+# Build & Packaging artifacts
+build/
+dist/
+dist_installer/
+*.spec.bak
+
+# Application runtime data, databases, registries & logs
+*.db
+*.db-wal
+*.db-shm
+*.db-journal
+*.log
+register.json
+managed_copies.json
+*.tmp.*
+exports/
+
+# Custom / Vendor MIBs copied at runtime (keep only standard Net-SNMP MIBs)
+share/snmp/mibs/*PROXIM*
+share/snmp/mibs/*PXM*
+
+# Node.js & Playwright E2E test artifacts
+node_modules/
+test-results/
+playwright-report/
+playwright/.cache/
+*.png
+
+# Local IDE, Editor & Planning directories
+.vscode/
+.idea/
+.kilo/
+.planning/
+*.swp
+*.swo
+Thumbs.db
+.DS_Store

@@ -1,0 +1,625 @@
+<!DOCTYPE html>
+<html lang="en" x-data="snmpApp()" :class="{ 'dark': dark }">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SNMP Visual Manager</title>
+<script src="/static/htmx.min.js"></script>
+<script src="/static/alpine.min.js" defer></script>
+<style>
+  :root {
+    --bg: #0f1419; --bg2: #1a1f2e; --bg3: #242b3d; --border: #2d3548;
+    --text: #e6edf3; --text2: #8b949e; --accent: #58a6ff; --accent2: #1f6feb;
+    --green: #3fb950; --red: #f85149; --yellow: #d29922; --purple: #bc8cff;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Segoe UI', system-ui, sans-serif; background: var(--bg); color: var(--text); font-size: 13px; height: 100vh; overflow: hidden; }
+  .app { display: flex; flex-direction: column; height: 100vh; }
+  .header { background: var(--bg2); border-bottom: 1px solid var(--border); padding: 10px 16px; display: flex; align-items: center; gap: 16px; }
+  .header h1 { font-size: 16px; font-weight: 600; color: var(--accent); }
+  .header .subtitle { color: var(--text2); font-size: 12px; }
+  .main { display: flex; flex: 1; overflow: hidden; }
+  .sidebar { width: 300px; background: var(--bg2); border-right: 1px solid var(--border); display: flex; flex-direction: column; overflow: hidden; }
+  .tabs { display: flex; border-bottom: 1px solid var(--border); }
+  .tab { flex: 1; padding: 10px; text-align: center; cursor: pointer; color: var(--text2); border-bottom: 2px solid transparent; font-size: 12px; }
+  .tab.active { color: var(--accent); border-bottom-color: var(--accent); background: var(--bg3); }
+  .tab:hover { color: var(--text); }
+  .tab-content { flex: 1; overflow-y: auto; padding: 12px; }
+  .content { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
+  .toolbar { background: var(--bg2); border-bottom: 1px solid var(--border); padding: 10px 16px; display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+  .results-area { flex: 1; overflow: auto; padding: 0; }
+  table { width: 100%; border-collapse: collapse; font-family: 'Consolas', 'Monaco', monospace; font-size: 12px; }
+  th { background: var(--bg3); padding: 8px 12px; text-align: left; color: var(--text2); font-weight: 600; position: sticky; top: 0; border-bottom: 1px solid var(--border); }
+  td { padding: 6px 12px; border-bottom: 1px solid var(--border); }
+  tr:hover td { background: var(--bg2); }
+  .oid-col { color: var(--purple); }
+  .name-col { color: var(--accent); }
+  .type-col { color: var(--yellow); }
+  .value-col { color: var(--green); word-break: break-all; }
+  input, select, textarea { background: var(--bg3); border: 1px solid var(--border); color: var(--text); padding: 6px 10px; border-radius: 4px; font-size: 12px; font-family: inherit; }
+  input:focus, select:focus { outline: none; border-color: var(--accent); }
+  button { background: var(--accent2); color: white; border: none; padding: 6px 14px; border-radius: 4px; cursor: pointer; font-size: 12px; font-weight: 500; }
+  button:hover { background: var(--accent); }
+  button.secondary { background: var(--bg3); color: var(--text); border: 1px solid var(--border); }
+  button.secondary:hover { background: var(--border); }
+  button.danger { background: var(--red); }
+  button.success { background: var(--green); }
+  button:disabled { opacity: 0.5; cursor: not-allowed; }
+  .btn-sm { padding: 4px 8px; font-size: 11px; }
+  .form-group { margin-bottom: 10px; }
+  .form-group label { display: block; color: var(--text2); font-size: 11px; margin-bottom: 4px; text-transform: uppercase; letter-spacing: 0.5px; }
+  .form-group input, .form-group select { width: 100%; }
+  .device-card { background: var(--bg3); border: 1px solid var(--border); border-radius: 6px; padding: 10px; margin-bottom: 8px; cursor: pointer; }
+  .device-card:hover { border-color: var(--accent); }
+  .device-card.selected { border-color: var(--accent); background: var(--bg2); }
+  .device-card .name { font-weight: 600; color: var(--accent); }
+  .device-card .meta { color: var(--text2); font-size: 11px; margin-top: 2px; }
+  .badge { display: inline-block; padding: 2px 6px; border-radius: 3px; font-size: 10px; font-weight: 600; }
+  .badge-v1 { background: #6e40c9; color: white; }
+  .badge-v2c { background: #1f6feb; color: white; }
+  .badge-v3 { background: #238636; color: white; }
+  .status-dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 6px; }
+  .status-running { background: var(--yellow); animation: pulse 1s infinite; }
+  .status-completed { background: var(--green); }
+  .status-error { background: var(--red); }
+  .status-stopped { background: var(--text2); }
+  @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.4; } }
+  .mib-item { display: flex; align-items: center; gap: 8px; padding: 6px 8px; border-radius: 4px; cursor: pointer; }
+  .mib-item:hover { background: var(--bg3); }
+  .mib-item .check { width: 16px; height: 16px; accent-color: var(--accent); }
+  .mib-item .mib-name { flex: 1; font-family: monospace; font-size: 11px; }
+  .mib-item.loaded .mib-name { color: var(--green); }
+  .toast { position: fixed; bottom: 20px; right: 20px; background: var(--bg3); border: 1px solid var(--border); border-radius: 6px; padding: 12px 16px; z-index: 1000; box-shadow: 0 4px 12px rgba(0,0,0,0.4); }
+  .toast.success { border-color: var(--green); }
+  .toast.error { border-color: var(--red); }
+  .progress-bar { height: 4px; background: var(--bg3); border-radius: 2px; overflow: hidden; }
+  .progress-bar .fill { height: 100%; background: var(--accent); transition: width 0.3s; }
+  .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.6); display: flex; align-items: center; justify-content: center; z-index: 100; }
+  .modal { background: var(--bg2); border: 1px solid var(--border); border-radius: 8px; padding: 20px; width: 500px; max-width: 90vw; max-height: 80vh; overflow-y: auto; }
+  .modal h2 { margin-bottom: 16px; color: var(--accent); }
+  .empty-state { text-align: center; padding: 60px 20px; color: var(--text2); }
+  .empty-state .icon { font-size: 48px; margin-bottom: 16px; }
+  .section-title { font-size: 11px; text-transform: uppercase; letter-spacing: 1px; color: var(--text2); margin: 16px 0 8px; }
+  .section-title:first-child { margin-top: 0; }
+  .flex { display: flex; }
+  .gap-2 { gap: 8px; }
+  .gap-4 { gap: 16px; }
+  .mt-2 { margin-top: 8px; }
+  .mt-4 { margin-top: 16px; }
+  .mb-2 { margin-bottom: 8px; }
+  .text-sm { font-size: 11px; }
+  .text-muted { color: var(--text2); }
+  .mono { font-family: 'Consolas', monospace; }
+  .hidden { display: none; }
+  .scrollbar::-webkit-scrollbar { width: 8px; height: 8px; }
+  .scrollbar::-webkit-scrollbar-track { background: var(--bg); }
+  .scrollbar::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
+  .scrollbar::-webkit-scrollbar-thumb:hover { background: var(--text2); }
+  .export-preview { background: var(--bg); border: 1px solid var(--border); border-radius: 6px; padding: 12px; font-family: monospace; font-size: 11px; white-space: pre-wrap; max-height: 400px; overflow-y: auto; }
+  .stat-card { background: var(--bg3); border: 1px solid var(--border); border-radius: 6px; padding: 12px; text-align: center; }
+  .stat-card .value { font-size: 20px; font-weight: 700; color: var(--accent); }
+  .stat-card .label { font-size: 10px; color: var(--text2); text-transform: uppercase; }
+</style>
+</head>
+<body>
+<div class="app">
+  <!-- Header -->
+  <div class="header">
+    <h1>SNMP Visual Manager</h1>
+    <span class="subtitle">net-snmp GUI</span>
+    <div style="flex:1"></div>
+    <span class="text-sm text-muted" x-text="`${loadedMibs}/${totalMibs} MIBs loaded`"></span>
+    <button class="secondary btn-sm" @click="toggleTheme()">Theme</button>
+  </div>
+
+  <div class="main">
+    <!-- Sidebar -->
+    <div class="sidebar">
+      <div class="tabs">
+        <div class="tab" :class="{active: sideTab==='devices'}" @click="sideTab='devices'">Devices</div>
+        <div class="tab" :class="{active: sideTab==='mibs'}" @click="sideTab='mibs'">MIB Modules</div>
+        <div class="tab" :class="{active: sideTab==='history'}" @click="sideTab='history'">History</div>
+      </div>
+      <div class="tab-content scrollbar">
+        <!-- DEVICES TAB -->
+        <div x-show="sideTab==='devices'">
+          <button class="success" style="width:100%; margin-bottom:12px;" @click="showDeviceForm=true">+ Add Device</button>
+          <template x-for="d in devices" :key="d.id">
+            <div class="device-card" :class="{selected: selectedDevice && selectedDevice.id===d.id}" @click="selectDevice(d)">
+              <div class="flex" style="justify-content:space-between; align-items:center;">
+                <span class="name" x-text="d.name"></span>
+                <span class="badge" :class="'badge-'+d.version" x-text="d.version"></span>
+              </div>
+              <div class="meta mono" x-text="`${d.ip_address}:${d.port}`"></div>
+              <div class="meta" x-text="d.read_community ? `Read: ${d.read_community}` : ''"></div>
+              <div class="flex gap-2 mt-2">
+                <button class="secondary btn-sm" @click.stop="testDevice(d)">Test</button>
+                <button class="secondary btn-sm" @click.stop="editDevice(d)">Edit</button>
+                <button class="danger btn-sm" @click.stop="deleteDevice(d)">Del</button>
+              </div>
+            </div>
+          </template>
+          <div x-show="!devices.length" class="empty-state">
+            <div class="icon">📡</div>
+            <div>No devices yet</div>
+            <div class="text-sm mt-2">Add an SNMP device to begin</div>
+          </div>
+        </div>
+
+        <!-- MIB MODULES TAB -->
+        <div x-show="sideTab==='mibs'">
+          <div class="flex gap-2 mb-2">
+            <button class="btn-sm" @click="loadAllMibs()">Load All</button>
+            <button class="secondary btn-sm" @click="refreshMibs()">Refresh</button>
+          </div>
+          <div class="form-group mb-2">
+            <label>Load from directory</label>
+            <div class="flex gap-2">
+              <input type="text" x-model="mibSourceDir" placeholder="C:\path\to\mibs" style="flex:1;">
+              <button class="btn-sm" @click="loadMibsFromDir()">Load</button>
+            </div>
+          </div>
+          <div class="text-sm text-muted mb-2" x-text="`${loadedMibs} of ${totalMibs} modules loaded`"></div>
+          <template x-for="m in mibModules" :key="m.name">
+            <div class="mib-item" :class="{loaded: m.loaded}" @click="toggleMib(m)" style="cursor:pointer;">
+              <span class="check" :class="{'checked': m.loaded}">✓</span>
+              <span class="mib-name" x-text="m.name"></span>
+              <span class="text-sm text-muted" style="margin-left:auto;" x-text="m.status || ''"></span>
+            </div>
+          </template>
+        </div>
+
+        <!-- HISTORY TAB -->
+        <div x-show="sideTab==='history'">
+          <template x-for="h in history" :key="h.id">
+            <div class="device-card">
+              <div class="flex" style="justify-content:space-between;">
+                <span class="name" x-text="h.operation"></span>
+                <span class="text-sm text-muted" x-text="h.status"></span>
+              </div>
+              <div class="meta mono" x-text="h.oid_from"></div>
+              <div class="meta" x-text="`${h.result_count} results`"></div>
+            </div>
+          </template>
+          <div x-show="!history.length" class="empty-state">
+            <div class="icon">📋</div>
+            <div>No query history</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Main content -->
+    <div class="content">
+      <!-- Walk toolbar -->
+      <div class="toolbar">
+        <div class="form-group" style="margin:0; min-width:200px;">
+          <label>From OID</label>
+          <input type="text" x-model="walkFrom" placeholder="1.3.6.1.2.1.1" style="font-family:monospace;">
+        </div>
+        <div class="form-group" style="margin:0; min-width:200px;">
+          <label>To OID (optional)</label>
+          <input type="text" x-model="walkTo" placeholder="1.3.6.1.2.1.1.9" style="font-family:monospace;">
+        </div>
+        <div class="form-group" style="margin:0;">
+          <label>Mode</label>
+          <select x-model="walkMode">
+            <option value="bulk">BulkWalk</option>
+            <option value="walk">Walk</option>
+          </select>
+        </div>
+        <div style="flex:1"></div>
+        <button class="success" @click="startWalk()" :disabled="walkRunning || !selectedDevice">Start Walk</button>
+        <button class="danger" @click="stopWalk()" :disabled="!walkRunning">Stop</button>
+        <button class="secondary" @click="exportResults()" :disabled="!results.length">Export</button>
+        <button class="secondary" @click="copyResults()" :disabled="!results.length">Copy</button>
+      </div>
+
+      <!-- Status bar -->
+      <div class="toolbar" style="padding:6px 16px; gap:16px;">
+        <span class="text-sm">
+          <span class="status-dot" :class="'status-'+walkStatus"></span>
+          <span x-text="walkStatusLabel"></span>
+        </span>
+        <span class="text-sm text-muted" x-text="`${results.length} varbinds`"></span>
+        <span class="text-sm text-muted" x-text="selectedDevice ? `Target: ${selectedDevice.ip_address}:${selectedDevice.port}` : 'No device selected'"></span>
+        <div style="flex:1"></div>
+        <span class="text-sm text-muted mono" x-text="walkDuration"></span>
+      </div>
+
+      <!-- Results table -->
+      <div class="results-area scrollbar">
+        <div x-show="!results.length && !walkRunning" class="empty-state">
+          <div class="icon">🌳</div>
+          <div>Walk results will appear here</div>
+          <div class="text-sm mt-2">Select a device, enter an OID, and start a walk</div>
+        </div>
+        <table x-show="results.length">
+          <thead>
+            <tr>
+              <th style="width:35%;">OID</th>
+              <th style="width:25%;">Name</th>
+              <th style="width:12%;">Type</th>
+              <th>Value</th>
+            </tr>
+          </thead>
+          <tbody>
+            <template x-for="r in results" :key="r.oid">
+              <tr>
+                <td class="oid-col" x-text="r.oid"></td>
+                <td class="name-col" x-text="r.name + (r.index ? '.'+r.index : '')"></td>
+                <td class="type-col" x-text="r.type"></td>
+                <td class="value-col" x-text="r.value"></td>
+              </tr>
+            </template>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Device Form Modal -->
+<div class="modal-overlay" x-show="showDeviceForm" @click.self="showDeviceForm=false">
+  <div class="modal">
+    <h2 x-text="editingDevice ? 'Edit Device' : 'Add Device'"></h2>
+    <div class="form-group">
+      <label>Name</label>
+      <input type="text" x-model="deviceForm.name" placeholder="My Router">
+    </div>
+    <div class="flex gap-2">
+      <div class="form-group" style="flex:2;">
+        <label>IP Address</label>
+        <input type="text" x-model="deviceForm.ip_address" placeholder="169.254.128.1">
+      </div>
+      <div class="form-group" style="flex:1;">
+        <label>Port</label>
+        <input type="number" x-model.number="deviceForm.port" value="161">
+      </div>
+    </div>
+    <div class="form-group">
+      <label>SNMP Version</label>
+      <select x-model="deviceForm.version" @change="onVersionChange()">
+        <option value="v1">SNMPv1</option>
+        <option value="v2c">SNMPv2c</option>
+        <option value="v3">SNMPv3</option>
+      </select>
+    </div>
+    <!-- v1/v2c community -->
+    <div x-show="deviceForm.version !== 'v3'">
+      <div class="flex gap-2">
+        <div class="form-group" style="flex:1;">
+          <label>Read Community</label>
+          <input type="text" x-model="deviceForm.read_community" placeholder="public">
+        </div>
+        <div class="form-group" style="flex:1;">
+          <label>Write Community</label>
+          <input type="text" x-model="deviceForm.write_community" placeholder="private">
+        </div>
+      </div>
+    </div>
+    <!-- v3 auth -->
+    <div x-show="deviceForm.version === 'v3'">
+      <div class="form-group">
+        <label>Username</label>
+        <input type="text" x-model="deviceForm.username" placeholder="snmpuser">
+      </div>
+      <div class="flex gap-2">
+        <div class="form-group" style="flex:1;">
+          <label>Auth Protocol</label>
+          <select x-model="deviceForm.auth_protocol">
+            <option value="MD5">MD5</option>
+            <option value="SHA">SHA</option>
+            <option value="SHA256">SHA256</option>
+          </select>
+        </div>
+        <div class="form-group" style="flex:1;">
+          <label>Auth Password</label>
+          <input type="password" x-model="deviceForm.auth_password">
+        </div>
+      </div>
+      <div class="flex gap-2">
+        <div class="form-group" style="flex:1;">
+          <label>Privacy Protocol</label>
+          <select x-model="deviceForm.privacy_protocol">
+            <option value="DES">DES</option>
+            <option value="AES">AES</option>
+            <option value="AES256">AES256</option>
+          </select>
+        </div>
+        <div class="form-group" style="flex:1;">
+          <label>Privacy Password</label>
+          <input type="password" x-model="deviceForm.privacy_password">
+        </div>
+      </div>
+    </div>
+    <div class="flex gap-2">
+      <div class="form-group" style="flex:1;">
+        <label>Retries</label>
+        <input type="number" x-model.number="deviceForm.retries" value="2">
+      </div>
+      <div class="form-group" style="flex:1;">
+        <label>Timeout (sec)</label>
+        <input type="number" x-model.number="deviceForm.timeout" value="2">
+      </div>
+    </div>
+    <div class="flex gap-2 mt-4" style="justify-content:flex-end;">
+      <button class="secondary" @click="showDeviceForm=false">Cancel</button>
+      <button class="success" @click="saveDevice()">Save</button>
+    </div>
+  </div>
+</div>
+
+<!-- Export Modal -->
+<div class="modal-overlay" x-show="showExportModal" @click.self="showExportModal=false">
+  <div class="modal" style="width:700px;">
+    <h2>Export Walk Results</h2>
+    <div class="form-group">
+      <label>Filename</label>
+      <input type="text" x-model="exportFilename" style="font-family:monospace;">
+    </div>
+    <div class="section-title">Preview</div>
+    <div class="export-preview scrollbar" x-text="exportPreview"></div>
+    <div class="flex gap-2 mt-4" style="justify-content:flex-end;">
+      <button class="secondary" @click="showExportModal=false">Close</button>
+      <button class="secondary" @click="copyExport()">Copy to Clipboard</button>
+      <button class="success" @click="downloadExport()">Download .txt</button>
+    </div>
+  </div>
+</div>
+
+<!-- Toast -->
+<div class="toast" x-show="toast.show" :class="toast.type" x-text="toast.message" x-transition></div>
+
+<script>
+function snmpApp() {
+  return {
+    dark: true,
+    sideTab: 'devices',
+    devices: [],
+    selectedDevice: null,
+    mibModules: [],
+    history: [],
+    walkFrom: '1.3.6.1.2.1.1',
+    walkTo: '',
+    walkMode: 'bulk',
+    walkStatus: 'idle',
+    walkSessionId: null,
+    results: [],
+    walkStartTime: null,
+    pollTimer: null,
+    showDeviceForm: false,
+    editingDevice: null,
+    showExportModal: false,
+    exportFilename: '',
+    exportContent: '',
+    toast: { show: false, message: '', type: 'success' },
+    deviceForm: this.defaultDeviceForm(),
+    mibSourceDir: '',
+
+    defaultDeviceForm() {
+      return {
+        id: null, name: '', ip_address: '', port: 161, version: 'v2c',
+        read_community: 'public', write_community: 'private',
+        username: '', auth_protocol: 'MD5', auth_password: '',
+        privacy_protocol: 'AES', privacy_password: '',
+        retries: 2, timeout: 2
+      };
+    },
+
+    get totalMibs() { return this.mibModules.length; },
+    get loadedMibs() { return this.mibModules.filter(m => m.loaded).length; },
+    get walkRunning() { return this.walkStatus === 'running'; },
+    get walkStatusLabel() {
+      const labels = { idle: 'Idle', running: 'Walking...', completed: 'Completed', stopped: 'Stopped', error: 'Error' };
+      return labels[this.walkStatus] || this.walkStatus;
+    },
+    get walkDuration() {
+      if (!this.walkStartTime) return '';
+      const secs = Math.floor((Date.now() - this.walkStartTime) / 1000);
+      return `${secs}s elapsed`;
+    },
+    get exportPreview() { return this.exportContent; },
+
+    init() {
+      this.loadDevices();
+      this.loadMibs();
+      this.loadHistory();
+    },
+
+    toggleTheme() { this.dark = !this.dark; },
+
+    showToast(msg, type = 'success') {
+      this.toast = { show: true, message: msg, type };
+      setTimeout(() => this.toast.show = false, 3000);
+    },
+
+    async api(path, opts = {}) {
+      const res = await fetch(path, {
+        headers: { 'Content-Type': 'application/json' },
+        ...opts
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.detail || res.statusText);
+      }
+      return res.json();
+    },
+
+    // ---- Devices ----
+    async loadDevices() {
+      try { this.devices = await this.api('/api/devices'); }
+      catch (e) { this.showToast('Failed to load devices: ' + e.message, 'error'); }
+    },
+    selectDevice(d) { this.selectedDevice = d; },
+    editDevice(d) {
+      this.editingDevice = d;
+      this.deviceForm = { ...this.defaultDeviceForm(), ...d };
+      this.showDeviceForm = true;
+    },
+    async saveDevice() {
+      try {
+        const payload = { ...this.deviceForm };
+        if (this.editingDevice) {
+          await this.api(`/api/devices/${this.editingDevice.id}`, { method: 'PUT', body: JSON.stringify(payload) });
+          this.showToast('Device updated');
+        } else {
+          await this.api('/api/devices', { method: 'POST', body: JSON.stringify(payload) });
+          this.showToast('Device added');
+        }
+        this.showDeviceForm = false;
+        this.editingDevice = null;
+        this.deviceForm = this.defaultDeviceForm();
+        await this.loadDevices();
+      } catch (e) { this.showToast('Save failed: ' + e.message, 'error'); }
+    },
+    async deleteDevice(d) {
+      if (!confirm(`Delete device "${d.name}"?`)) return;
+      try {
+        await this.api(`/api/devices/${d.id}`, { method: 'DELETE' });
+        this.showToast('Device deleted');
+        if (this.selectedDevice && this.selectedDevice.id === d.id) this.selectedDevice = null;
+        await this.loadDevices();
+      } catch (e) { this.showToast('Delete failed: ' + e.message, 'error'); }
+    },
+    async testDevice(d) {
+      try {
+        const res = await this.api(`/api/devices/${d.id}/test`, { method: 'POST' });
+        if (res.success) this.showToast('Connection OK: ' + (res.sys_descr || 'reachable'));
+        else this.showToast('Test failed: ' + res.message, 'error');
+      } catch (e) { this.showToast('Test failed: ' + e.message, 'error'); }
+    },
+    onVersionChange() {},
+
+    // ---- MIBs ----
+    async loadMibs(dir) {
+      try { 
+        const url = dir ? '/api/mibs?dir=' + encodeURIComponent(dir) : '/api/mibs';
+        this.mibModules = await this.api(url); 
+      }
+      catch (e) { this.showToast('Failed to load MIBs', 'error'); }
+    },
+    async toggleMib(m) {
+      try {
+        if (m.loaded) {
+          this.showToast('Unload not supported yet', 'success');
+          await this.loadMibs();
+        } else {
+          const res = await this.api('/api/mibs/load', { method: 'POST', body: JSON.stringify({ module_name: m.name, source_dir: this.mibSourceDir || null }) });
+          this.showToast(`${m.name}: ${res.message}`);
+          await this.loadMibs(this.mibSourceDir);
+        }
+      } catch (e) { this.showToast('MIB operation failed: ' + e.message, 'error'); }
+    },
+    async loadAllMibs() {
+      try {
+        const res = await this.api('/api/mibs/load-all', { method: 'POST', body: JSON.stringify({ source_dir: this.mibSourceDir || null }) });
+        this.showToast(res.message);
+        await this.loadMibs(this.mibSourceDir);
+      } catch (e) { this.showToast('Load all failed: ' + e.message, 'error'); }
+    },
+    async loadMibsFromDir() {
+      if (!this.mibSourceDir) { this.showToast('Enter a directory path', 'error'); return; }
+      this.showToast(`Loading MIBs from ${this.mibSourceDir}...`);
+      await this.loadAllMibs();
+    },
+    async refreshMibs() { await this.loadMibs(this.mibSourceDir); this.showToast('MIB list refreshed'); },
+
+    // ---- Walk ----
+    async startWalk() {
+      if (!this.selectedDevice) { this.showToast('Select a device first', 'error'); return; }
+      if (!this.walkFrom) { this.showToast('Enter a From OID', 'error'); return; }
+      this.results = [];
+      this.walkStatus = 'running';
+      this.walkStartTime = Date.now();
+      try {
+        const res = await this.api('/api/walk/start', {
+          method: 'POST',
+          body: JSON.stringify({
+            device_id: this.selectedDevice.id,
+            oid_from: this.walkFrom,
+            oid_to: this.walkTo || null,
+            use_bulk: this.walkMode === 'bulk'
+          })
+        });
+        this.walkSessionId = res.session_id;
+        this.pollWalk();
+      } catch (e) {
+        this.walkStatus = 'error';
+        this.showToast('Walk failed: ' + e.message, 'error');
+      }
+    },
+    pollWalk() {
+      if (this.pollTimer) clearInterval(this.pollTimer);
+      this.pollTimer = setInterval(async () => {
+        try {
+          const [status, results] = await Promise.all([
+            this.api(`/api/walk/status/${this.walkSessionId}`),
+            this.api(`/api/walk/results/${this.walkSessionId}?limit=5000`)
+          ]);
+          this.walkStatus = status.status;
+          this.results = results.results;
+          if (status.status !== 'running') {
+            clearInterval(this.pollTimer);
+            this.pollTimer = null;
+            if (status.status === 'completed') this.showToast(`Walk completed: ${results.total} varbinds`);
+            if (status.status === 'error') this.showToast('Walk error: ' + (status.error || ''), 'error');
+            await this.loadHistory();
+          }
+        } catch (e) {
+          clearInterval(this.pollTimer);
+          this.pollTimer = null;
+          this.walkStatus = 'error';
+        }
+      }, 800);
+    },
+    async stopWalk() {
+      if (!this.walkSessionId) return;
+      try {
+        await this.api(`/api/walk/stop/${this.walkSessionId}`, { method: 'POST' });
+        this.showToast('Stop requested');
+      } catch (e) { this.showToast('Stop failed', 'error'); }
+    },
+
+    // ---- Export ----
+    async exportResults() {
+      if (!this.walkSessionId) return;
+      try {
+        this.exportFilename = `walk_${this.walkSessionId}_${new Date().toISOString().slice(0,19).replace(/[:T]/g,'-')}.txt`;
+        const res = await this.api(`/api/walk/export/${this.walkSessionId}`, {
+          method: 'POST',
+          body: JSON.stringify({ filename: this.exportFilename })
+        });
+        this.exportContent = res.content || '';
+        this.showExportModal = true;
+      } catch (e) { this.showToast('Export failed: ' + e.message, 'error'); }
+    },
+    copyExport() {
+      navigator.clipboard.writeText(this.exportContent).then(() => this.showToast('Copied to clipboard'));
+    },
+    downloadExport() {
+      const blob = new Blob([this.exportContent], { type: 'text/plain' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url; a.download = this.exportFilename;
+      a.click(); URL.revokeObjectURL(url);
+      this.showToast('Downloaded ' + this.exportFilename);
+    },
+    async copyResults() {
+      const text = this.results.map(r => `${r.name}${r.index ? '.'+r.index : ''} (${r.type}) = ${r.value}`).join('\n');
+      await navigator.clipboard.writeText(text);
+      this.showToast('Results copied');
+    },
+
+    // ---- History ----
+    async loadHistory() {
+      try {
+        // History is stored server-side; fetch via a simple endpoint if available
+        this.history = [];
+      } catch (e) { /* ignore */ }
+    }
+  };
+}
+</script>
+</body>
+</html>

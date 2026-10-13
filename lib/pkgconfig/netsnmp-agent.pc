@@ -1,0 +1,12 @@
+prefix=/c/net-snmp-install
+exec_prefix=${prefix}
+includedir=${prefix}/include
+libdir=${exec_prefix}/lib
+
+Name: netsnmp-agent (Net-SNMP)
+Description: SNMP (Simple Network Management Protocol) sub-agent SDK.
+URL: http://www.net-snmp.org
+Version: 5.9.5.2
+Cflags: -I${includedir}
+Libs: -L${libdir} -lnetsnmpmibs -lnetsnmpagent -lnetsnmp
+Libs.private:    -lnetapi32    -lssl -lssl -lcrypto  -lws2_32 -liphlpapi -lsnmpapi
