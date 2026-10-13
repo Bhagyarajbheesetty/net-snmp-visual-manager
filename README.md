@@ -141,6 +141,10 @@ This application is built as a free, open-source community interface utilizing t
 >
 > Net-SNMP is licensed under the BSD-style Net-SNMP License. This application is an independent, non-commercial graphical management tool built for free public use.
 
+### Authors & Contributors
+- **Bhagyaraj Bheesetty** — Creator & Maintainer
+- **Antigravity** (Google DeepMind) — Advanced Agentic AI Coding Assistant & Contributor
+
 ### Open-Source Libraries
 We gratefully acknowledge the developers and maintainers of the following open-source projects:
 - **PySNMP & PySMI** (BSD 2-Clause) — Ilya Etingof, LeXtudio Inc.

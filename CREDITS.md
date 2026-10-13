@@ -31,9 +31,10 @@ Net-SNMP originated from the CMU SNMP project and was subsequently maintained an
 
 ---
 
-## Application Author & Maintainer
+## Application Author & Contributors
 
-- **Developer**: Bhagyaraj Bheesetty
+- **Developer & Maintainer**: Bhagyaraj Bheesetty
+- **AI Coding Assistant & Contributor**: Antigravity (Google DeepMind)
 - **Repository**: [https://github.com/Bhagyarajbheesetty/net-snmp-visual-manager](https://github.com/Bhagyarajbheesetty/net-snmp-visual-manager)
 - **License**: MIT License (Free for personal, academic, and commercial use)
 

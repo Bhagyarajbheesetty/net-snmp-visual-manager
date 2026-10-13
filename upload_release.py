@@ -47,25 +47,29 @@ def main():
             print(f"Error checking release: {e}")
             sys.exit(1)
 
-    # 2. Create release if not exists
+    release_notes = (
+        "## SNMP Visual Manager v1.0.0\n\n"
+        "A modern, standalone Windows desktop application and web GUI for **Net-SNMP 5.9.5.2**.\n\n"
+        "### Downloads\n"
+        "- **`NetSNMPManager_Setup_v1.0.exe`**: Complete 64-bit Windows setup wizard with bundled Net-SNMP 5.9.5.2 tools and standard MIBs.\n\n"
+        "### Features & Highlights\n"
+        "- **SNMPv1 / SNMPv2c / SNMPv3 USM Support**: MD5, SHA, SHA256, DES, AES with quick connection tests.\n"
+        "- **Visual MIB Tree & Browser**: Explore 65+ bundled MIBs and easily load external vendor MIBs.\n"
+        "- **Live Walk & BulkWalk Operations**: Fast, adaptive walk with gap detection and strict OID sequencing.\n"
+        "- **Native Windows Save As Dialog**: Reliable export directly to your chosen folder.\n"
+        "- **Clean Data Architecture**: Strict separation between `register.json` and `snmp_manager.db`.\n\n"
+        "### Authors & Contributors\n"
+        "- **Bhagyaraj Bheesetty** - Application Author & Maintainer\n"
+        "- **Antigravity (Google DeepMind)** - AI Assistant & Contributor\n\n"
+        "### Credits & Legal Attribution\n"
+        "- **Net-SNMP 5.9.5.2**: [http://www.net-snmp.org/](http://www.net-snmp.org/) (Email: `net-snmp-coders@lists.sourceforge.net`)\n"
+        "- All rights, copyrights, and trademarks are reserved by the original authors and contributors of the Net-SNMP project.\n"
+        "- Licensed under the **MIT License**. Free open-source software for all users.\n"
+    )
+
+    # 2. Create release if not exists, or update description if exists
     if not release:
         create_url = f"https://api.github.com/repos/{repo}/releases"
-        release_notes = (
-            "## SNMP Visual Manager v1.0.0\n\n"
-            "A modern, standalone Windows desktop application and web GUI for **Net-SNMP 5.9.5.2**.\n\n"
-            "### Downloads\n"
-            "- **`NetSNMPManager_Setup_v1.0.exe`**: Complete 64-bit Windows setup wizard with bundled Net-SNMP 5.9.5.2 tools and standard MIBs.\n\n"
-            "### Features & Highlights\n"
-            "- **SNMPv1 / SNMPv2c / SNMPv3 USM Support**: MD5, SHA, SHA256, DES, AES with quick connection tests.\n"
-            "- **Visual MIB Tree & Browser**: Explore 65+ bundled MIBs and easily load external vendor MIBs.\n"
-            "- **Live Walk & BulkWalk Operations**: Fast, adaptive walk with gap detection and strict OID sequencing.\n"
-            "- **Native Windows Save As Dialog**: Reliable export directly to your chosen folder.\n"
-            "- **Clean Data Architecture**: Strict separation between `register.json` and `snmp_manager.db`.\n\n"
-            "### Credits & Legal Attribution\n"
-            "- **Net-SNMP 5.9.5.2**: [http://www.net-snmp.org/](http://www.net-snmp.org/) (Email: `net-snmp-coders@lists.sourceforge.net`)\n"
-            "- All rights, copyrights, and trademarks are reserved by the original authors and contributors of the Net-SNMP project.\n"
-            "- Licensed under the **MIT License**. Free open-source software for all users.\n"
-        )
         body = {
             "tag_name": tag,
             "target_commitish": "main",
@@ -79,6 +83,13 @@ def main():
         with urllib.request.urlopen(post_req) as resp:
             release = json.loads(resp.read().decode())
             print(f"Successfully created release: {release.get('html_url')}")
+    else:
+        patch_url = release["url"]
+        patch_body = {"body": release_notes}
+        patch_req = urllib.request.Request(patch_url, data=json.dumps(patch_body).encode("utf-8"), headers=headers, method="PATCH")
+        with urllib.request.urlopen(patch_req) as resp:
+            release = json.loads(resp.read().decode())
+            print(f"Updated release notes with latest contributor attributions on GitHub.")
 
     # 3. Upload Setup Executable
     asset_path = os.path.join(os.path.dirname(__file__), "dist_installer", "NetSNMPManager_Setup_v1.0.exe")
@@ -89,7 +100,14 @@ def main():
     asset_name = "NetSNMPManager_Setup_v1.0.exe"
     asset_size = os.path.getsize(asset_path)
 
-    # If asset with same name already exists in release, delete it first
+    # Check if identical asset already exists in release
+    existing_matching = [a for a in release.get("assets", []) if a.get("name") == asset_name and a.get("size") == asset_size]
+    if existing_matching:
+        print(f"\nAsset '{asset_name}' is already attached to release ({asset_size:,} bytes). Skipping redundant upload.")
+        print(f"Release URL: {release.get('html_url')}")
+        return
+
+    # If asset with same name already exists in release but different size, delete it first
     for a in release.get("assets", []):
         if a.get("name") == asset_name:
             print(f"Deleting existing asset '{asset_name}' (ID: {a['id']})...")

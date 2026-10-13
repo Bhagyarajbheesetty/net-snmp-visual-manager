@@ -59,6 +59,7 @@ async def about():
         "net_snmp_web": "http://www.net-snmp.org/",
         "net_snmp_email": "net-snmp-coders@lists.sourceforge.net",
         "author": "Bhagyaraj Bheesetty",
+        "contributors": ["Bhagyaraj Bheesetty", "Antigravity (Google DeepMind)"],
         "credits": "Built with Net-SNMP 5.9.5.2 (http://www.net-snmp.org/). All rights and copyrights reserved by original Net-SNMP authors and contributors. Free open-source tool for SNMP management."
     }
 
