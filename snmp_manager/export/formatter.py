@@ -73,8 +73,6 @@ def format_walk_export(
             disp_val = getattr(vb, "display_value", None)
             if disp_val is None:
                 disp_val = vb.value
-            if disp_val == "":
-                disp_val = '""'
             lines.append(f"{name_part} ({disp_type}) = {disp_val}")
         else:
             reason = vb.error_msg or vb.value or "No response from agent"
