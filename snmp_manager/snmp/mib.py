@@ -72,7 +72,7 @@ class MibManager:
         return self.loader
 
     def scan_mibs(self, directory: str = None) -> List[MibModuleInfo]:
-        """Scan directory and workspace for available MIB modules."""
+        """Dynamically scan the application's MIB directory (or specified directory) for available MIB files."""
         modules = []
         loaded_set = set(self._active_modules)
         
@@ -91,14 +91,16 @@ class MibManager:
 
         seen_names = set()
 
-        # Scan files in target directory
+        # Dynamically scan only files physically present in the target MIB directory
         for filename in sorted(os.listdir(target_dir)):
             if filename.lower().endswith((".txt", ".mib", ".my")) or "." not in filename:
                 fpath = os.path.join(target_dir, filename)
                 if not os.path.isfile(fpath):
                     continue
                 info = workspace_manager.parse_mib_header(fpath)
-                mod_name = info.module_name if info.is_valid_mib and info.module_name else filename.rsplit(".", 1)[0]
+                if not info.is_valid_mib:
+                    continue
+                mod_name = info.module_name if info.module_name else filename.rsplit(".", 1)[0]
                 if mod_name in seen_names:
                     continue
                 seen_names.add(mod_name)
@@ -112,13 +114,12 @@ class MibManager:
 
                 if is_bundled_rfc:
                     category = "packaged"
-                    status = "active" if is_loaded else "packaged"
                 elif is_managed:
                     category = "custom"
-                    status = "active" if is_loaded else "staged"
                 else:
-                    category = "staged"
-                    status = "active" if is_loaded else "staged"
+                    category = "packaged"
+
+                status = "active" if is_loaded else "available"
 
                 modules.append(MibModuleInfo(
                     name=mod_name,
@@ -132,45 +133,24 @@ class MibManager:
                     original_path=orig_path
                 ))
 
-        # Also include any files staged in workspace
-        for ws_info in workspace_manager.list_workspace_mibs():
-            if ws_info.module_name not in seen_names:
-                mod_name = ws_info.module_name
-                seen_names.add(mod_name)
-                self._module_registry[mod_name] = ws_info
-                is_loaded = mod_name in loaded_set
-                is_bundled_rfc = mod_name in STANDARD_BUNDLED_MIBS
-                rec = managed_registry.get_record(mod_name)
-                is_managed = rec is not None and rec.is_managed
-                orig_path = rec.original_path if rec else ""
-
-                if is_bundled_rfc:
-                    category = "packaged"
-                    status = "active" if is_loaded else "packaged"
-                elif is_managed:
-                    category = "custom"
-                    status = "active" if is_loaded else "staged"
-                else:
-                    category = "staged"
-                    status = "active" if is_loaded else "staged"
-
-                modules.append(MibModuleInfo(
-                    name=mod_name,
-                    path=ws_info.filepath,
-                    loaded=is_loaded,
-                    status=status,
-                    object_count=len(self._objects_cache.get(mod_name, [])),
-                    dependencies=ws_info.imports,
-                    category=category,
-                    is_managed=is_managed,
-                    original_path=orig_path
-                ))
+        # When scanning the default application mibs folder, keep registry and active modules
+        # synchronized with files actually present in the mibs folder.
+        if not directory or os.path.normcase(os.path.abspath(target_dir)) == os.path.normcase(os.path.abspath(self.loader.mib_dir)):
+            for active_mod in list(self._active_modules):
+                if active_mod not in seen_names:
+                    self._active_modules.discard(active_mod)
+                    self.loader._loaded_modules.discard(active_mod)
+                    self.loader._compile_status.pop(active_mod, None)
+                    self._objects_cache.pop(active_mod, None)
+            for reg_mod in list(self._module_registry.keys()):
+                if reg_mod not in seen_names:
+                    self._module_registry.pop(reg_mod, None)
 
         return modules
 
     def load_file(self, src_path: str) -> Dict[str, any]:
         """
-        Loads an arbitrary MIB file:
+        Loads an arbitrary MIB file (or directory of MIB files):
         1. Determines whether file is inside the application's packaged MIB directory.
         2. Stages canonical alias to workspace so PySMI compiler can always find it by module name.
         3. If external:
@@ -183,6 +163,30 @@ class MibManager:
         6. Compiles and activates module.
         7. On failure, cleanly rolls back newly created copies so no unmanaged files linger.
         """
+        if os.path.isdir(src_path):
+            loaded_mods = []
+            errors = []
+            for fname in sorted(os.listdir(src_path)):
+                if fname.lower().endswith((".txt", ".mib", ".my")) or "." not in fname:
+                    fpath = os.path.join(src_path, fname)
+                    if os.path.isfile(fpath):
+                        info = workspace_manager.parse_mib_header(fpath)
+                        if info.is_valid_mib:
+                            res = self.load_file(fpath)
+                            if res.get("success"):
+                                loaded_mods.append(info.module_name)
+                            else:
+                                errors.append(res.get("message", fname))
+            if loaded_mods:
+                return {
+                    "success": True,
+                    "message": f"Loaded {len(loaded_mods)} MIB module(s) from directory: {', '.join(loaded_mods)}",
+                    "module_name": loaded_mods[0],
+                    "loaded_modules": loaded_mods,
+                }
+            err_detail = f" ({errors[0]})" if errors else ""
+            return {"success": False, "message": f"No valid MIB files could be loaded from directory: {src_path}{err_detail}"}
+
         if not os.path.isfile(src_path):
             return {"success": False, "message": f"File not found: {src_path}"}
 

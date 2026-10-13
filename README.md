@@ -1,4 +1,8 @@
-# SNMP Visual Manager
+# SNMP Visual Manager `v1.0.0`
+
+[![Release](https://img.shields.io/badge/release-v1.0.0-blue.svg)](https://github.com/Bhagyarajbheesetty/net-snmp-visual-manager/releases)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+[![Net-SNMP](https://img.shields.io/badge/Net--SNMP-5.9.5.2-green.svg)](http://www.net-snmp.org/)
 
 A modern, standalone Windows desktop and web application for **Net-SNMP** with live MIB browsing, syntax-aware OID value decoding, SNMPv1/v2c/v3 device management, real-time subtree walks, type-safe GET/SET operations, and structured text exports.
 
@@ -119,4 +123,36 @@ python tests/test_mib_file_management.py
 python tests/test_mib_lifecycle_buttons.py
 python tests/test_mib_value_decoding.py
 python tests/test_oid_counting.py
+python tests/test_export_download.py
 ```
+
+---
+
+## Credits, Contributors & Legal Attribution
+
+This application is built as a free, open-source community interface utilizing the **Net-SNMP** suite:
+
+- **Net-SNMP Core Suite**: Version `5.9.5.2`
+- **Net-SNMP Official Website**: [http://www.net-snmp.org/](http://www.net-snmp.org/)
+- **Net-SNMP Developer Contact**: `net-snmp-coders@lists.sourceforge.net`
+
+### Copyright Notice
+> **All rights, copyrights, and intellectual property for Net-SNMP are strictly reserved by the original Net-SNMP authors, distributors, and contributors** (Carnegie Mellon University, UC Davis, Networks Associates Technology, Inc., Cambridge Broadband Ltd., Sun Microsystems, Sparta, Inc., Cisco Systems, Fabasoft R&D Software GmbH, Apple Inc., and the Net-SNMP community).
+>
+> Net-SNMP is licensed under the BSD-style Net-SNMP License. This application is an independent, non-commercial graphical management tool built for free public use.
+
+### Open-Source Libraries
+We gratefully acknowledge the developers and maintainers of the following open-source projects:
+- **PySNMP & PySMI** (BSD 2-Clause) — Ilya Etingof, LeXtudio Inc.
+- **FastAPI** (MIT) — Sebastián Ramírez
+- **Starlette & Uvicorn** (BSD 3-Clause) — Encode OSS Ltd.
+- **pywebview** (BSD 3-Clause) — Roman Sakno
+- **Alpine.js** (MIT) — Caleb Porzio
+
+See [CREDITS.md](CREDITS.md) and [LICENSE](LICENSE) for full legal text and third-party notices.
+
+---
+
+## License
+
+This application is open-source software licensed under the **[MIT License](LICENSE)**. Free for personal, academic, and commercial use. Net-SNMP components remain under their respective BSD-style Net-SNMP licenses.

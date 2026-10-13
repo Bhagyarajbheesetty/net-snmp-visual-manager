@@ -65,6 +65,35 @@ class VarBind:
 from snmp.workspace import BUNDLED_MIBS_DIR
 
 
+class WindowsSafePyFileWriter(PyFileWriter):
+    """
+    Subclass of PyFileWriter that removes any pre-existing target .py/.pyc file before writing
+    so that PyFileWriter's internal os.rename(tfile, pyfile) does not fail on Windows with
+    [WinError 183] Cannot create a file when that file already exists.
+    """
+
+    def put_data(self, mibname, data, comments=(), dryRun=False):
+        if not dryRun and os.path.exists(self._path):
+            mod_str = mibname.decode("utf-8") if isinstance(mibname, bytes) else str(mibname)
+            base_path = os.path.join(self._path, mod_str)
+            for ext in (".py", ".pyc", ".pyo"):
+                target_file = base_path + ext
+                if os.path.exists(target_file):
+                    try:
+                        os.remove(target_file)
+                    except OSError:
+                        pass
+            pycache_dir = os.path.join(self._path, "__pycache__")
+            if os.path.isdir(pycache_dir):
+                for fn in os.listdir(pycache_dir):
+                    if fn.startswith(f"{mod_str}."):
+                        try:
+                            os.remove(os.path.join(pycache_dir, fn))
+                        except OSError:
+                            pass
+        return super().put_data(mibname, data, comments=comments, dryRun=dryRun)
+
+
 class MIBLoader:
     """Compiles ASN.1 MIB files to pysnmp Python modules using pysmi."""
 
@@ -81,7 +110,7 @@ class MIBLoader:
             self._compiler = MibCompiler(
                 SmiV2Parser(),
                 PySnmpCodeGen(),
-                PyFileWriter(self.cache_dir),
+                WindowsSafePyFileWriter(self.cache_dir),
             )
             self._compiler.add_sources(FileReader(self.mib_dir))
             self._compiler.add_searchers(PyFileSearcher(self.cache_dir))

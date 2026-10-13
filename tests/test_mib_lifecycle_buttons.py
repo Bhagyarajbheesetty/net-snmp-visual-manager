@@ -155,29 +155,36 @@ def test_button_unload_and_tree_synchronization():
 
 def test_button_load_staged_to_active():
     """
-    Tests clicking ⚡ Load button on a staged MIB:
-    - Module transitions from Staged to Active.
-    - Tree is updated with module's nodes.
-    - Calling Load again or Unload responds correctly.
+    Tests dynamic MIB discovery from the application's mibs folder (BUNDLED_MIBS_DIR)
+    and clicking ⚡ Load button on an unloaded MIB in the mibs folder:
+    - Files only in workspace (outside BUNDLED_MIBS_DIR) do NOT appear in /api/mibs.
+    - Files placed in BUNDLED_MIBS_DIR dynamically appear in /api/mibs with loaded: False, status: 'available'.
+    - Clicking ⚡ Load transitions the module to Active and updates the MIB tree.
     """
-    temp_dir = tempfile.mkdtemp(prefix="test_btn_load_staged_")
+    temp_dir = tempfile.mkdtemp(prefix="test_btn_load_avail_")
     client = TestClient(app)
+    mod_name = "MY-AVAILABLE-MIB"
+    bundled_copy = os.path.join(BUNDLED_MIBS_DIR, f"{mod_name}.txt")
     try:
-        mod_name = "MY-STAGED-MIB"
         file_path = os.path.join(temp_dir, f"{mod_name}.txt")
         with open(file_path, "w", encoding="utf-8") as f:
             f.write(_create_sample_mib(mod_name, enterprise_oid=77703))
 
-        # First stage the file in workspace without activating it
+        # Verify that staging only to workspace (not in mibs folder) does NOT show in /api/mibs
         workspace_manager.stage_file_to_workspace(file_path)
+        list_ws_only = client.get("/api/mibs").json()
+        assert next((m for m in list_ws_only if m["name"] == mod_name), None) is None
 
-        # In scan_mibs, it should appear as staged
+        # Place file in the application's mibs folder (BUNDLED_MIBS_DIR)
+        shutil.copy2(file_path, bundled_copy)
+
+        # In scan_mibs, it dynamically appears as available (unloaded)
         list_resp = client.get("/api/mibs")
         mibs = list_resp.json()
         target = next((m for m in mibs if m["name"] == mod_name), None)
         assert target is not None
         assert target["loaded"] is False
-        assert target["status"] == "staged"
+        assert target["status"] == "available"
 
         # Tree does NOT contain it yet
         tree_before = client.get("/api/mibs/tree")
@@ -198,7 +205,9 @@ def test_button_load_staged_to_active():
         tree_after = client.get("/api/mibs/tree")
         assert "77703" in tree_after.text
     finally:
-        client.post("/api/mibs/remove", json={"module_name": "MY-STAGED-MIB"})
+        client.post("/api/mibs/remove", json={"module_name": mod_name})
+        if os.path.exists(bundled_copy):
+            os.remove(bundled_copy)
         shutil.rmtree(temp_dir, ignore_errors=True)
 
 
@@ -367,47 +376,47 @@ def test_button_unload_all():
 
 def test_button_remove_staged_mib_never_reappears():
     """
-    Simulates the exact user bug:
-    A custom MIB is staged in workspace (or uploaded), showing as Staged.
+    Tests removing an unloaded custom MIB present in the application's mibs folder:
     Clicking Remove must:
-    1. Permanently remove its staging registration and workspace files.
-    2. Refreshing /api/mibs must NOT list the MIB as staged anymore.
+    1. Permanently remove its copy from BUNDLED_MIBS_DIR and workspace files.
+    2. Refreshing /api/mibs must NOT list the MIB anymore.
     3. User original file is preserved.
     4. Repeated removal attempts handle cleanly without error.
     """
     temp_dir = tempfile.mkdtemp(prefix="test_staged_rem_")
     client = TestClient(app)
+    mod_name = "MY-STAGE-REMOVE-MIB"
+    bundled_copy = os.path.join(BUNDLED_MIBS_DIR, f"{mod_name}.txt")
     try:
-        mod_name = "MY-STAGE-REMOVE-MIB"
         file_path = os.path.join(temp_dir, f"{mod_name}.txt")
         with open(file_path, "w", encoding="utf-8") as f:
             f.write(_create_sample_mib(mod_name, enterprise_oid=77709))
 
         orig_hash = compute_file_hash(file_path)
 
-        # Stage file to workspace without activating
+        # Place copy in application mibs folder and workspace without activating
+        shutil.copy2(file_path, bundled_copy)
         dest_path, info = workspace_manager.stage_file_to_workspace(file_path)
         assert os.path.isfile(dest_path)
 
-        # Verify it appears as staged in /api/mibs
+        # Verify it appears as available (unloaded) in /api/mibs
         list_resp = client.get("/api/mibs")
         mibs = list_resp.json()
         target = next((m for m in mibs if m["name"] == mod_name), None)
-        assert target is not None, f"Staged MIB {mod_name} should appear in /api/mibs"
+        assert target is not None, f"MIB {mod_name} in mibs folder should appear in /api/mibs"
         assert target["loaded"] is False
-        assert target["status"] == "staged"
-        assert target["category"] in ("staged", "custom")
+        assert target["status"] == "available"
 
-        # Now click Remove on this staged MIB
+        # Now click Remove on this MIB
         rem_resp = client.post("/api/mibs/remove", json={"module_name": mod_name})
         assert rem_resp.status_code == 200, f"Remove failed: {rem_resp.text}"
         rem_data = rem_resp.json()
         assert rem_data.get("success") is True
 
-        # Authoritative scan after remove: MUST NOT appear in /api/mibs as staged!
+        # Authoritative scan after remove: MUST NOT appear in /api/mibs!
         list_after = client.get("/api/mibs")
         target_after = next((m for m in list_after.json() if m["name"] == mod_name), None)
-        assert target_after is None, f"Removed staged MIB '{mod_name}' MUST NOT appear in /api/mibs after removal!"
+        assert target_after is None, f"Removed MIB '{mod_name}' MUST NOT appear in /api/mibs after removal!"
 
         # Files in workspace must be gone
         ws_files = os.listdir(workspace_manager.workspace_dir)
@@ -423,6 +432,8 @@ def test_button_remove_staged_mib_never_reappears():
         assert rep_resp.status_code == 200
         assert rep_resp.json().get("success") is True
     finally:
+        if os.path.exists(bundled_copy):
+            os.remove(bundled_copy)
         shutil.rmtree(temp_dir, ignore_errors=True)
 
 

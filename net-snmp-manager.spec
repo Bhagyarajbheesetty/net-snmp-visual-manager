@@ -35,6 +35,7 @@ hidden_imports = (
         "api.walk",
         "api.operations",
         "export.formatter",
+        "export.file_dialog",
     ]
 )
 
@@ -61,6 +62,8 @@ if os.path.isdir(bin_dir):
 datas = [
     ("snmp_manager/static", "snmp_manager/static"),
     ("snmp_manager/static", "static"),
+    ("LICENSE", "."),
+    ("CREDITS.md", "."),
 ] + mibs_files + bin_files + collect_data_files("pysmi") + collect_data_files("webview")
 
 a = Analysis(

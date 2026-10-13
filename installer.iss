@@ -2,12 +2,17 @@
 AppId={{D37D0851-A3D2-4E90-B8B7-3D32F46A19AC}
 AppName=SNMP Visual Manager
 AppVersion=1.0.0
-AppPublisher=Net-SNMP Tooling
+AppPublisher=Bhagyaraj Bheesetty
+AppComments=Net-SNMP 5.9.5.2 GUI Management Tool
+AppContact=net-snmp-coders@lists.sourceforge.net
+AppSupportURL=http://www.net-snmp.org/
+AppUpdatesURL=https://github.com/Bhagyarajbheesetty/net-snmp-visual-manager
+LicenseFile=LICENSE
 DefaultDirName={autopf}\NetSNMPManager
 DefaultGroupName=SNMP Visual Manager
 AllowNoIcons=yes
 OutputDir=dist_installer
-OutputBaseFilename=NetSNMPManager_Setup
+OutputBaseFilename=NetSNMPManager_Setup_v1.0
 Compression=lzma2/ultra64
 SolidCompression=yes
 WizardStyle=modern
@@ -28,6 +33,8 @@ Name: "desktopicon"; Description: "{cm:CreateDesktopIcon}"; GroupDescription: "{
 Source: "dist\NetSNMPManager\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
 Source: "share\snmp\mibs\*"; DestDir: "{app}\mibs"; Flags: ignoreversion recursesubdirs; Excludes: "*PROXIM*,*PXM*"
 Source: "bin\*"; DestDir: "{app}\bin"; Flags: ignoreversion recursesubdirs
+Source: "LICENSE"; DestDir: "{app}"; Flags: ignoreversion
+Source: "CREDITS.md"; DestDir: "{app}"; Flags: ignoreversion
 
 [Icons]
 Name: "{group}\SNMP Visual Manager"; Filename: "{app}\NetSNMPManager.exe"

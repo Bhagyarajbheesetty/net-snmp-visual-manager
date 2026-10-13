@@ -1,6 +1,7 @@
-from fastapi import APIRouter, HTTPException, Depends
+from fastapi import APIRouter, HTTPException, Depends, Response
 from typing import List, Optional
 from pydantic import BaseModel
+import asyncio
 import uuid
 from database import get_db, row_to_dict
 from snmp.client import DeviceConfig
@@ -9,6 +10,11 @@ from snmp.mib import mib_manager
 from snmp.process import process_runner
 from snmp.registry import managed_registry
 from export.formatter import format_walk_export
+from export.file_dialog import (
+    sanitize_export_filename,
+    prompt_save_as_dialog,
+    save_export_content_to_path,
+)
 from datetime import datetime
 import os
 
@@ -68,6 +74,21 @@ class ExportResponse(BaseModel):
     success: bool
     path: Optional[str] = None
     content: Optional[str] = None
+    message: str
+
+
+class SaveAsRequest(BaseModel):
+    filename: Optional[str] = None
+    content: Optional[str] = None
+    session_id: Optional[str] = None
+    target_path: Optional[str] = None
+
+
+class SaveAsResponse(BaseModel):
+    success: bool
+    status: str  # "saved" | "cancelled" | "error"
+    path: Optional[str] = None
+    filename: Optional[str] = None
     message: str
 
 
@@ -236,6 +257,90 @@ async def export_walk(session_id: str, request: ExportRequest, db=Depends(get_db
         )
 
     return ExportResponse(success=True, path=filepath, content=export_content, message="Export successful")
+
+
+def _resolve_export_content(request: SaveAsRequest) -> str:
+    if request.content is not None and request.content != "":
+        return request.content
+    if request.session_id:
+        session = walk_engine.get_session(request.session_id)
+        if not session:
+            raise HTTPException(status_code=404, detail="Session not found")
+        device = managed_registry.get_device(session.device_id)
+        if not device:
+            raise HTTPException(status_code=404, detail="Device not found")
+        return format_walk_export(
+            device=dict(device),
+            session=session,
+            oid_from=session.oid_from,
+            oid_to=session.oid_to,
+        )
+    if request.content == "":
+        return ""
+    raise HTTPException(status_code=400, detail="No export content or walk session provided")
+
+
+@router.post("/save-as", response_model=SaveAsResponse)
+async def save_walk_export_as(request: SaveAsRequest, db=Depends(get_db)):
+    export_content = _resolve_export_content(request)
+    default_prefix = f"walk_{request.session_id or 'export'}_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
+    safe_filename = sanitize_export_filename(request.filename, default_prefix=default_prefix)
+
+    try:
+        if request.target_path:
+            chosen_path = request.target_path
+            _, ext = os.path.splitext(chosen_path)
+            if not ext:
+                chosen_path = f"{chosen_path}.txt"
+        else:
+            chosen_path = await asyncio.to_thread(prompt_save_as_dialog, safe_filename)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to open Save As dialog: {str(e)}")
+
+    if not chosen_path:
+        return SaveAsResponse(
+            success=False,
+            status="cancelled",
+            path=None,
+            filename=None,
+            message="Save cancelled by user",
+        )
+
+    try:
+        saved_path = await asyncio.to_thread(save_export_content_to_path, chosen_path, export_content)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to save file: {str(e)}")
+
+    if request.session_id:
+        session = walk_engine.get_session(request.session_id)
+        if session and hasattr(session, "history_id") and session.history_id:
+            db.execute(
+                "UPDATE query_history SET status = ?, result_count = ?, export_path = ?, completed_at = ?, error_message = ? WHERE id = ?",
+                (session.status, len(session.results), saved_path, session.completed_at, session.error, session.history_id),
+            )
+
+    return SaveAsResponse(
+        success=True,
+        status="saved",
+        path=saved_path,
+        filename=os.path.basename(saved_path),
+        message=f"Saved to {saved_path}",
+    )
+
+
+@router.post("/download-stream")
+async def download_walk_export_stream(request: SaveAsRequest):
+    export_content = _resolve_export_content(request)
+    default_prefix = f"walk_{request.session_id or 'export'}_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
+    safe_filename = sanitize_export_filename(request.filename, default_prefix=default_prefix)
+    return Response(
+        content=export_content.encode("utf-8"),
+        media_type="text/plain; charset=utf-8",
+        headers={
+            "Content-Disposition": f'attachment; filename="{safe_filename}"',
+            "Cache-Control": "no-store",
+        },
+    )
 
 
 @router.get("/history")

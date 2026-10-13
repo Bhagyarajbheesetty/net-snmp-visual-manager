@@ -15,7 +15,7 @@ async def lifespan(app: FastAPI):
     yield
 
 
-app = FastAPI(title="SNMP Visual Manager", lifespan=lifespan)
+app = FastAPI(title="SNMP Visual Manager", version="1.0.0", lifespan=lifespan)
 
 app.include_router(devices.router, prefix="/api/devices", tags=["devices"])
 app.include_router(mibs.router, prefix="/api/mibs", tags=["mibs"])
@@ -46,7 +46,21 @@ async def root():
 
 @app.get("/health")
 async def health():
-    return {"status": "ok"}
+    return {"status": "ok", "version": "1.0.0"}
+
+
+@app.get("/api/about")
+async def about():
+    return {
+        "app_name": "SNMP Visual Manager",
+        "version": "1.0.0",
+        "license": "MIT",
+        "net_snmp_version": "5.9.5.2",
+        "net_snmp_web": "http://www.net-snmp.org/",
+        "net_snmp_email": "net-snmp-coders@lists.sourceforge.net",
+        "author": "Bhagyaraj Bheesetty",
+        "credits": "Built with Net-SNMP 5.9.5.2 (http://www.net-snmp.org/). All rights and copyrights reserved by original Net-SNMP authors and contributors. Free open-source tool for SNMP management."
+    }
 
 
 if __name__ == "__main__":

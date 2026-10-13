@@ -148,8 +148,48 @@ def on_closing():
     if server_instance:
         server_instance.should_exit = True
 
+
+class DesktopApi:
+    """Native desktop bridge exposed to the frontend via window.pywebview.api."""
+
+    def save_export_file(self, filename: str, content: str):
+        try:
+            from export.file_dialog import (
+                sanitize_export_filename,
+                prompt_save_as_dialog,
+                save_export_content_to_path,
+            )
+            safe_name = sanitize_export_filename(filename)
+            chosen_path = prompt_save_as_dialog(safe_name)
+            if not chosen_path:
+                return {
+                    "success": False,
+                    "status": "cancelled",
+                    "path": None,
+                    "filename": None,
+                    "message": "Save cancelled by user",
+                }
+            saved_path = save_export_content_to_path(chosen_path, content)
+            return {
+                "success": True,
+                "status": "saved",
+                "path": saved_path,
+                "filename": os.path.basename(saved_path),
+                "message": f"Saved to {saved_path}",
+            }
+        except Exception as e:
+            log(f"DesktopApi.save_export_file error: {e}")
+            return {
+                "success": False,
+                "status": "error",
+                "path": None,
+                "filename": None,
+                "message": str(e),
+            }
+
+
 def main():
-    log("--- SNMP Visual Manager Starting ---")
+    log("--- SNMP Visual Manager v1.0 Starting ---")
     port = find_free_port()
     log(f"Selected port: {port}")
     
@@ -165,8 +205,9 @@ def main():
 
     # Create native WebView2 desktop window
     window = webview.create_window(
-        title="SNMP Visual Manager",
-        url=f"http://127.0.0.1:{port}",
+        title="SNMP Visual Manager v1.0",
+        url=f"http://127.0.0.1:{port}/?mode=desktop",
+        js_api=DesktopApi(),
         width=1280,
         height=850,
         min_size=(1024, 680),
