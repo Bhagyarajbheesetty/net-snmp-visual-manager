@@ -739,7 +739,8 @@ class SNMPClient:
 
         # Check for DisplayString
         if s_cls == "DisplayString" or "DisplayString" in mro_names:
-            return "DisplayString", self._format_value(val)
+            v_str = self._format_value(val)
+            return "DisplayString", v_str if v_str != "" else '""'
 
         # Check for Unsigned32
         if s_cls == "Unsigned32" or "Unsigned32" in mro_names:
@@ -751,7 +752,10 @@ class SNMPClient:
 
         # Fallback to protocol type and value
         proto_type = self._get_type_name(val)
-        return proto_type, self._format_value(val)
+        val_str = self._format_value(val)
+        if proto_type == "OctetString" and val_str == "":
+            val_str = '""'
+        return proto_type, val_str
 
     def _format_mac_address(self, val) -> str:
         try:

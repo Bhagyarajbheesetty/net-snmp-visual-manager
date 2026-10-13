@@ -476,7 +476,7 @@
                 </td>
                 <td class="name-col" x-text="r.name + (r.index ? '.'+r.index : '')"></td>
                 <td class="type-col" x-text="r.display_type || r.type"></td>
-                <td class="value-col" x-text="(r.display_value !== null && r.display_value !== undefined) ? r.display_value : r.value" :title="'Raw: ' + r.value"></td>
+                <td class="value-col" x-text="((r.display_value !== null && r.display_value !== undefined) ? r.display_value : r.value) === '' ? '\"\"' : ((r.display_value !== null && r.display_value !== undefined) ? r.display_value : r.value)" :title="'Raw: ' + (r.value === '' ? '\"\" (empty string)' : r.value)"></td>
               </tr>
             </template>
           </tbody>
@@ -1430,11 +1430,12 @@ function snmpApp() {
           })
         });
         if (res.success && !res.is_no_such) {
+          const valToShow = (res.parsed_value !== undefined && res.parsed_value !== null && res.parsed_value !== '') ? res.parsed_value : (res.parsed_value === '' ? '""' : res.output);
           this.results = [{
             oid: res.oid,
             name: res.parsed_name || res.oid,
             type: res.parsed_type || 'Value',
-            value: res.parsed_value || res.output,
+            value: valToShow,
             index: '',
             status: 'ok'
           }];
@@ -1618,7 +1619,8 @@ function snmpApp() {
         const namePart = `${r.name}${r.index ? '.'+r.index : ''}`;
         if ((r.status || 'ok') === 'ok') {
           const dt = r.display_type || r.type;
-          const dv = (r.display_value !== undefined && r.display_value !== null) ? r.display_value : r.value;
+          let dv = (r.display_value !== undefined && r.display_value !== null) ? r.display_value : r.value;
+          if (dv === '') dv = '""';
           return `${namePart} (${dt}) = ${dv}`;
         }
         return `${namePart} (FAILED) = ${r.value || r.error_msg || 'No response from agent'}`;
@@ -1787,7 +1789,8 @@ function snmpApp() {
         const namePart = `${r.name}${r.index ? '.'+r.index : ''}`;
         if ((r.status || 'ok') === 'ok') {
           const dt = r.display_type || r.type;
-          const dv = (r.display_value !== undefined && r.display_value !== null) ? r.display_value : r.value;
+          let dv = (r.display_value !== undefined && r.display_value !== null) ? r.display_value : r.value;
+          if (dv === '') dv = '""';
           return `${namePart} (${dt}) = ${dv}`;
         }
         return `${namePart} (FAILED) = ${r.value || r.error_msg || 'No response from agent'}`;
