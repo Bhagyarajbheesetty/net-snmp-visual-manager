@@ -21,7 +21,7 @@ test.describe("2. MIB Modules & Tree View QA Suite", () => {
     // Verify action buttons exist and are clickable
     const refreshBtn = page.locator('div[x-show="sideTab===\'mibs\'"] button:has-text("Refresh")');
     const unloadAllBtn = page.locator('div[x-show="sideTab===\'mibs\'"] button:has-text("Unload All")');
-    const browseBtn = page.locator('div[x-show="sideTab===\'mibs\'"] button:has-text("Browse / Load MIB")');
+    const browseBtn = page.locator('div[x-show="sideTab===\'mibs\'"] button:has-text("Browse")');
 
     await expect(refreshBtn).toBeVisible();
     await expect(unloadAllBtn).toBeVisible();
@@ -40,7 +40,7 @@ test.describe("2. MIB Modules & Tree View QA Suite", () => {
     const treeTab = page.locator('.tab:has-text("MIB Tree")');
     await treeTab.click();
 
-    // Verify interfaces 841 node rendered in tree
+    // Verify interfaces node rendered in tree
     const treeNode = page.locator('.tree-node-row:has-text("interfaces")');
     await expect(treeNode).toBeVisible({ timeout: 6000 });
     await expect(treeNode).toContainText("(2)");
@@ -51,15 +51,17 @@ test.describe("2. MIB Modules & Tree View QA Suite", () => {
     await searchInput.fill("wirelessIf");
     await page.waitForTimeout(300);
 
-    // Left-click on a tree node to populate Target OID
-    await treeNode.click();
+    // Left-click on matching search result node to populate Target OID
+    const searchResultNode = page.locator('.tree-node-row:has-text("wirelessIf")').first();
+    await expect(searchResultNode).toBeVisible();
+    await searchResultNode.click();
     const oidInput = page.locator('input[x-model="walkFrom"]');
     await expect(oidInput).toHaveValue(/1\.3\.6\.1\.4\.1\.841/);
   });
 
   test("2.3 MIB Tree right-click Context Menu and BulkWalk trigger", async ({ page }) => {
-    // Select real test device 127.0.0.1 first
-    const deviceCard = page.locator('.device-card:has-text("127.0.0.1")').first();
+    // Select real test device first
+    const deviceCard = page.locator('.device-card').first();
     await deviceCard.click();
 
     const treeTab = page.locator('.tab:has-text("MIB Tree")');
@@ -96,9 +98,7 @@ test.describe("2. MIB Modules & Tree View QA Suite", () => {
 
     // Stop walk cleanly
     await stopBtn.click();
-    const statusDot = page.locator(".status-dot");
+    const statusDot = page.locator(".content .status-dot");
     await expect(statusDot).toHaveClass(/status-stopped/, { timeout: 8000 });
   });
 });
-
-

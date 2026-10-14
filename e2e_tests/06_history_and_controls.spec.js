@@ -16,7 +16,7 @@ test.describe("6. History, Theme, and Keyboard QA Suite", () => {
 
   test("6.1 History tab records operations and Clear History empties table", async ({ page }) => {
     // First execute a GET operation to ensure at least one history item is logged
-    const deviceCard = page.locator('.device-card:has-text("127.0.0.1")').first();
+    const deviceCard = page.locator('.device-card').first();
     await deviceCard.click();
 
     const oidInput = page.locator('input[x-model="walkFrom"]');
@@ -43,7 +43,7 @@ test.describe("6. History, Theme, and Keyboard QA Suite", () => {
   });
 
   test("6.2 Theme toggle button switches between Light and Dark mode", async ({ page }) => {
-    const themeBtn = page.locator('button:has-text("Theme")');
+    const themeBtn = page.locator('button[title*="theme"]').first();
     await expect(themeBtn).toBeVisible();
 
     const htmlEl = page.locator("html");
@@ -73,5 +73,3 @@ test.describe("6. History, Theme, and Keyboard QA Suite", () => {
     await expect(modal).not.toBeVisible();
   });
 });
-
-

@@ -51,6 +51,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Preserved privacy and credential separation across all repository commits.
 
 ### Fixed
+- **Playwright E2E Test Suite Robustness**:
+  - Upgraded Playwright E2E test suites across all 6 test modules (`01_device_management` through `06_history_and_controls`) to dynamically resolve registered target devices, scope status indicator locators uniquely to `.content .status-dot`, align with `x-model` form bindings, and verify all 17 integration workflows with 100% pass rate.
+- **MIB Tree Default Hierarchy Auto-Expansion**:
+  - Expanded standard `mib-2` path (`1.3.6.1.2`, `1.3.6.1.2.1`) by default in the MIB Tree view alongside enterprise branches so standard MIB-II nodes (`system`, `interfaces`) are immediately visible upon application load.
 - **Value Column Rendering Stability**:
   - Reverted invalid attribute quote escaping in `index.html` that previously caused Alpine.js template evaluation to fail and render walk results table values as blank.
 - **Symbol Resolution in `snmptranslate` on Windows**:

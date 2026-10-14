@@ -5,6 +5,8 @@ async function waitForAlpine(page) {
 }
 
 test.describe("5. Walk, Live Results, Filters, and Export QA Suite", () => {
+  let selectedIp = "";
+
   test.beforeEach(async ({ page, request }) => {
     // Ensure IF-MIB is loaded
     await request.post("http://127.0.0.1:8080/api/mibs/load", {
@@ -13,8 +15,9 @@ test.describe("5. Walk, Live Results, Filters, and Export QA Suite", () => {
     await page.goto("/");
     await waitForAlpine(page);
 
-    // Select real test device 127.0.0.1
-    const deviceCard = page.locator('.device-card:has-text("127.0.0.1")').first();
+    // Select real test device dynamically
+    const deviceCard = page.locator('.device-card').first();
+    selectedIp = (await deviceCard.locator('.meta.mono').innerText()).split(':')[0].trim();
     await deviceCard.click();
   });
 
@@ -26,11 +29,11 @@ test.describe("5. Walk, Live Results, Filters, and Export QA Suite", () => {
     await walkBtn.click();
 
     // Wait until walk finishes
-    const statusDot = page.locator(".status-dot");
+    const statusDot = page.locator(".content .status-dot");
     await expect(statusDot).toHaveClass(/status-completed/, { timeout: 35000 });
 
     // Verify counters in status bar
-    const okCounter = page.locator('text=/✓.*ok/');
+    const okCounter = page.locator('text=/✓.*answered/');
     await expect(okCounter).toBeVisible();
 
     const allFilter = page.locator('button.filter-pill:has-text("All")');
@@ -46,7 +49,7 @@ test.describe("5. Walk, Live Results, Filters, and Export QA Suite", () => {
     const totalRows = await rows.count();
     expect(totalRows).toBeGreaterThan(0);
 
-    // Filter by Failed
+    // Filter by Failed if any failed items exist
     if (await failedFilter.isEnabled()) {
       await failedFilter.click();
       const failedRowCount = await rows.count();
@@ -85,7 +88,7 @@ test.describe("5. Walk, Live Results, Filters, and Export QA Suite", () => {
     await page.locator('.toolbar button.success').click();
     
     // Wait for walk completion
-    const statusDot = page.locator(".status-dot");
+    const statusDot = page.locator(".content .status-dot");
     await expect(statusDot).toHaveClass(/status-completed/, { timeout: 35000 });
     await expect(page.locator("table tbody tr").first()).toBeVisible();
 
@@ -100,7 +103,7 @@ test.describe("5. Walk, Live Results, Filters, and Export QA Suite", () => {
     await expect(preview).toBeVisible();
     await expect(preview).toContainText("[SNMP Agent]");
     await expect(preview).toContainText("[Query Results]");
-    await expect(preview).toContainText("127.0.0.1");
+    await expect(preview).toContainText(selectedIp);
 
     // Close export modal
     const closeBtn = exportModal.locator('button:has-text("Close")');
@@ -108,5 +111,3 @@ test.describe("5. Walk, Live Results, Filters, and Export QA Suite", () => {
     await expect(exportModal).not.toBeVisible();
   });
 });
-
-

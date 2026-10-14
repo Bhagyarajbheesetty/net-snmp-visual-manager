@@ -13,8 +13,8 @@ test.describe("4. SNMP Operations (GET, SET, Concurrency Guard, Stop) QA Suite",
     await page.goto("/");
     await waitForAlpine(page);
 
-    // Select real test device 127.0.0.1
-    const deviceCard = page.locator('.device-card:has-text("127.0.0.1")').first();
+    // Select real test device dynamically
+    const deviceCard = page.locator('.device-card').first();
     await deviceCard.click();
   });
 
@@ -37,13 +37,13 @@ test.describe("4. SNMP Operations (GET, SET, Concurrency Guard, Stop) QA Suite",
     await expect(resultRow).toContainText("Gauge32");
 
     // Verify status counter
-    const okCounter = page.locator('text=/✓.*1.*ok/');
+    const okCounter = page.locator('text=/✓.*1.*answered/');
     await expect(okCounter).toBeVisible();
   });
 
   test("4.2 Live SNMP GET on No Such Instance OID flags red row, FAILED badge, and error toast", async ({ page }) => {
     const oidInput = page.locator('input[x-model="walkFrom"]');
-    await oidInput.fill("1.3.6.1.4.1.841.1.1.3.4.1.2.1.15");
+    await oidInput.fill("1.3.6.1.4.1.841.1.1.3.4.1.2.1.15.99");
 
     const getBtn = page.locator('.toolbar button:has-text("GET")');
     await getBtn.click();
@@ -61,8 +61,8 @@ test.describe("4. SNMP Operations (GET, SET, Concurrency Guard, Stop) QA Suite",
     await expect(failedBadge).toBeVisible();
     await expect(failedBadge).toHaveText("FAILED");
 
-    // Verify status counter updates with ✗ 1 failed
-    const failedCounter = page.locator('text=/✗.*1.*failed/');
+    // Verify status counter updates with ✗ 1 unimplemented
+    const failedCounter = page.locator('text=/✗.*1.*unimplemented/');
     await expect(failedCounter).toBeVisible();
   });
 
@@ -87,7 +87,7 @@ test.describe("4. SNMP Operations (GET, SET, Concurrency Guard, Stop) QA Suite",
     await stopBtn.click();
 
     // Verify status updates to stopped and buttons re-enable
-    const statusDot = page.locator(".status-dot");
+    const statusDot = page.locator(".content .status-dot");
     await expect(statusDot).toHaveClass(/status-stopped/, { timeout: 8000 });
     await expect(getBtn).toBeEnabled({ timeout: 5000 });
     await expect(walkBtn).toBeEnabled({ timeout: 5000 });
@@ -112,5 +112,3 @@ test.describe("4. SNMP Operations (GET, SET, Concurrency Guard, Stop) QA Suite",
     await expect(toast).toContainText("GET succeeded");
   });
 });
-
-

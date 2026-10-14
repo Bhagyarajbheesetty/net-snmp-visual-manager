@@ -1290,8 +1290,8 @@ function snmpApp() {
     async loadTree(showToast = false) {
       try {
         this.treeData = await this.api('/api/mibs/tree');
-        // Auto-expand standard path down to enterprise 841
-        ['1', '1.3', '1.3.6', '1.3.6.1', '1.3.6.1.4', '1.3.6.1.4.1', '1.3.6.1.4.1.841', '1.3.6.1.4.1.841.1', '1.3.6.1.4.1.841.1.1'].forEach(oid => {
+        // Auto-expand standard path down to mib-2 and enterprise 841
+        ['1', '1.3', '1.3.6', '1.3.6.1', '1.3.6.1.2', '1.3.6.1.2.1', '1.3.6.1.4', '1.3.6.1.4.1', '1.3.6.1.4.1.841', '1.3.6.1.4.1.841.1', '1.3.6.1.4.1.841.1.1'].forEach(oid => {
           this.expandedNodes[oid] = true;
         });
         this.renderTree();
@@ -1303,7 +1303,7 @@ function snmpApp() {
       }
     },
     expandDefaultEnterprise() {
-      ['1', '1.3', '1.3.6', '1.3.6.1', '1.3.6.1.4', '1.3.6.1.4.1', '1.3.6.1.4.1.841', '1.3.6.1.4.1.841.1', '1.3.6.1.4.1.841.1.1'].forEach(oid => {
+      ['1', '1.3', '1.3.6', '1.3.6.1', '1.3.6.1.2', '1.3.6.1.2.1', '1.3.6.1.4', '1.3.6.1.4.1', '1.3.6.1.4.1.841', '1.3.6.1.4.1.841.1', '1.3.6.1.4.1.841.1.1'].forEach(oid => {
         this.expandedNodes[oid] = true;
       });
       // Also expand any other enterprise child under 1.3.6.1.4.1

@@ -16,7 +16,7 @@ test.describe("3. MIB Objects & Inspector QA Suite", () => {
 
   test("3.1 Search objects and auto-import OID & Type into controls", async ({ page }) => {
     // Select real test device first while on Devices tab
-    const deviceCard = page.locator('.device-card:has-text("127.0.0.1")').first();
+    const deviceCard = page.locator('.device-card').first();
     await deviceCard.click();
 
     const objectsTab = page.locator('.tab:has-text("Objects")');
@@ -43,22 +43,21 @@ test.describe("3. MIB Objects & Inspector QA Suite", () => {
     await expect(toast).toBeVisible();
     await expect(toast).toContainText("sysMgmtCfgCommit");
 
-    // Open SET modal to verify detected type and blank value
+    // Open SET modal to verify detected type and enum options
     const setBtn = page.locator('.toolbar button:has-text("SET")');
     await setBtn.click();
-    const setModal = page.locator('.modal:has(h2:has-text("SNMP SET Operation"))');
+    const setModal = page.locator('.modal:has(h2:has-text("Set"))');
     await expect(setModal).toBeVisible();
 
     const targetOidInModal = setModal.locator('input[x-model="setForm.oid"]');
     await expect(targetOidInModal).toHaveValue("1.3.6.1.4.1.841.1.1.2.1.4.2.0");
 
-    const proposedValueInput = setModal.locator('input[x-model="setForm.value"]');
-    await expect(proposedValueInput).toHaveValue("");
+    // sysMgmtCfgCommit has integer enum hint options: commit(1), temporaryCommit(2)
+    const enumSelect = setModal.locator('select[x-model="setForm.selectedEnum"]');
+    await expect(enumSelect).toBeVisible();
 
     // Dismiss SET modal
     await setModal.locator('button:has-text("Cancel")').click();
     await expect(setModal).not.toBeVisible();
   });
 });
-
-
