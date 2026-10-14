@@ -10,6 +10,7 @@ class NetSnmpProcessRunner:
     def __init__(self, bin_dir: Optional[str] = None):
         self.bin_dir = bin_dir or NET_SNMP_BIN_DIR
         self.snmpget_exe = os.path.join(self.bin_dir, "snmpget.exe")
+        self.snmpgetnext_exe = os.path.join(self.bin_dir, "snmpgetnext.exe")
         self.snmpset_exe = os.path.join(self.bin_dir, "snmpset.exe")
         self.snmptranslate_exe = os.path.join(self.bin_dir, "snmptranslate.exe")
         self.snmpwalk_exe = os.path.join(self.bin_dir, "snmpwalk.exe")
@@ -95,6 +96,52 @@ class NetSnmpProcessRunner:
         target = f"{device.get('ip_address')}:{device.get('port', 161)}"
 
         cmd = [self.snmpget_exe, "-m", mod_str, "-M", mib_dirs]
+        cmd.extend(self._build_auth_args(device))
+        cmd.extend([target, oid])
+
+        proc_timeout = max(10, int(device.get("timeout", 2)) * (int(device.get("retries", 2)) + 1) + 5)
+        try:
+            proc = subprocess.Popen(
+                cmd,
+                stdin=subprocess.DEVNULL,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                text=True,
+                **self._get_silent_kwargs(),
+            )
+            self.active_processes.add(proc)
+            try:
+                stdout, stderr = proc.communicate(timeout=proc_timeout)
+                if proc.returncode == 0:
+                    return True, stdout.strip(), ""
+                return False, stdout.strip(), stderr.strip()
+            except subprocess.TimeoutExpired:
+                try:
+                    proc.kill()
+                except Exception:
+                    pass
+                return False, "", "Request timed out"
+            finally:
+                self.active_processes.discard(proc)
+        except Exception as e:
+            return False, "", str(e)
+
+    def run_snmpgetnext(
+        self,
+        device: dict,
+        oid: str,
+        modules: Optional[List[str]] = None,
+        extra_dirs: Optional[List[str]] = None,
+    ) -> Tuple[bool, str, str]:
+        """
+        Executes snmpgetnext.exe with safe argument array.
+        Returns (success, stdout, stderr_or_error).
+        """
+        mod_str = ";".join(modules) if modules else "ALL"
+        mib_dirs = self.get_mib_dirs_flag(extra_dirs)
+        target = f"{device.get('ip_address')}:{device.get('port', 161)}"
+
+        cmd = [self.snmpgetnext_exe, "-m", mod_str, "-M", mib_dirs]
         cmd.extend(self._build_auth_args(device))
         cmd.extend([target, oid])
 

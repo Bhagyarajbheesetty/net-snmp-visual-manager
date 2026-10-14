@@ -1361,10 +1361,8 @@ function snmpApp() {
           this.expandedNodes[baseOid] = false;
         }
       }
-      if (hasChildren || node.is_table) {
+      if (hasChildren || node.is_table || node.is_column) {
         this.walkFrom = baseOid;
-      } else if (node.is_column) {
-        this.walkFrom = `${baseOid}.1`;
       } else {
         this.walkFrom = `${baseOid}.0`;
       }
@@ -1480,6 +1478,8 @@ function snmpApp() {
           icon.textContent = isExpanded ? '📂' : '📁';
         } else if (node.is_table) {
           icon.textContent = '📊';
+        } else if (node.is_column) {
+          icon.textContent = '📋';
         } else {
           icon.textContent = '🍃';
         }

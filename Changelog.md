@@ -34,6 +34,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Enhanced `check_destination_collision` in `UnifiedRegistry` to compare SHA-256 hashes of destination files. When an identical file already exists on disk from an existing installation or previous reload, it is safely reused without throwing false-positive overwrite collisions.
 - **Smart Null-Terminated C-String Decoding**:
   - Added detection for null-padded `OctetString` values in `_format_value` (`snmp_manager/snmp/client.py`) so strings containing trailing `0x00` padding decode cleanly into ASCII text rather than hexadecimal dump format.
+- **Smart Table Column Instance Resolution for SNMP GET**:
+  - Implemented automatic fallback probing with `snmpgetnext` when an exact SNMP GET is requested on an un-instantiated table column (e.g., `linkProfileDDRSMinDataRate` / `1.3.6.1.4.1.841.1.1.1.1.1.7.1.5`).
+  - Automatically resolves and displays the first valid row instance (e.g., `.1.1 = 11`) rather than reporting an unhelpful `No Such Instance` error.
+- **Accurate MIB Table Column Detection (`is_column`)**:
+  - Updated MIB symbol analysis to inspect `MibTableColumn` directly in symbol class hierarchy (MRO), correctly categorizing multi-index table columns and preventing incorrect `.0` scalar suffixes.
+  - Added dedicated `📋` icon in the MIB Tree for columnar table objects.
 - **Automated GitHub Release Publishing**:
   - Added `upload_release.py` script for automated creation of GitHub releases, tag management, and multi-part asset uploading for Windows installer binaries.
 

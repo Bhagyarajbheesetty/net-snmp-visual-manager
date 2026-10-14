@@ -699,8 +699,10 @@ class MibManager:
                     except Exception:
                         pass
 
-                is_table = "Table" in sym_name
-                is_column = "Entry" not in sym_name and is_table is False and ("Row" in sym_name or "Index" in sym_name or "read-create" in str(max_access))
+                mro_names = [c.__name__ for c in type(sym_obj).__mro__]
+                is_table = "MibTable" in mro_names or "Table" in sym_name
+                is_entry = "MibTableRow" in mro_names or "Entry" in sym_name
+                is_column = "MibTableColumn" in mro_names or (not is_entry and not is_table and ("Row" in sym_name or "Index" in sym_name or "read-create" in str(max_access)))
 
                 obj_info = MibObjectInfo(
                     name=sym_name,

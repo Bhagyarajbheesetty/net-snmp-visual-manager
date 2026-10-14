@@ -68,6 +68,31 @@ async def snmp_get_operation(request: SnmpGetRequest, db=Depends(get_db)):
     # Detect SNMP exception conditions: "No Such Instance" or "No Such Object"
     is_no_such = "No Such Instance" in stdout or "No Such Object" in stdout
     parsed_name, parsed_type, parsed_value = _parse_snmp_output(stdout)
+    resolved_oid = request.oid
+
+    # Intelligent Table Column & Multi-Index Resolution:
+    # If standard exact GET failed because this OID is a table column or un-instantiated object (e.g. linkProfileDDRSMinDataRate),
+    # probe with snmpgetnext to retrieve the first actual row instance of this column!
+    if is_no_such and not request.oid.endswith(".0"):
+        next_ok, next_out, next_err = process_runner.run_snmpgetnext(device, request.oid, active_modules)
+        if next_ok and next_out and "No Such" not in next_out:
+            n_name, n_type, n_val = _parse_snmp_output(next_out)
+            clean_req = request.oid.split("::")[-1].strip(".")
+            oid_info = process_runner.translate_oid_details(request.oid, modules=active_modules) or {}
+            target_name = oid_info.get("name", "")
+
+            is_match = (
+                clean_req in n_name
+                or (target_name and target_name in n_name)
+                or next_out.startswith(clean_req)
+            )
+            if is_match:
+                is_no_such = False
+                stdout = next_out
+                parsed_name = n_name
+                parsed_type = n_type
+                parsed_value = n_val
+                resolved_oid = n_name.split("=")[0].strip() if "=" in n_name else n_name
 
     db.execute(
         "INSERT INTO query_history (device_id, operation, oid_from, status, result_count, completed_at, error_message) VALUES (?, ?, ?, ?, ?, CURRENT_TIMESTAMP, ?)",
@@ -76,7 +101,7 @@ async def snmp_get_operation(request: SnmpGetRequest, db=Depends(get_db)):
 
     return SnmpGetSetResponse(
         success=not is_no_such,
-        oid=request.oid,
+        oid=resolved_oid,
         output=stdout,
         parsed_name=parsed_name,
         parsed_type=parsed_type if not is_no_such else "NO SUCH INSTANCE",

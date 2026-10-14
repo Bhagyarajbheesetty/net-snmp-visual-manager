@@ -113,5 +113,15 @@ class TestSetEnumHints(unittest.TestCase):
         self.assertEqual(data["description_details"]["get_options"]["Commit Successful"], 200)
 
 
+    def test_table_column_classification_and_smart_get(self):
+        """12. Verify table columns are detected with is_column=True and smart get probes next instance."""
+        mib_manager._objects_cache.clear()
+        objs = mib_manager.discover_objects("PROXIM-MIB")
+        col_obj = next((o for o in objs if o.name == "linkProfileDDRSMinDataRate"), None)
+        self.assertIsNotNone(col_obj)
+        self.assertTrue(col_obj.is_column)
+        self.assertFalse(col_obj.is_table)
+
+
 if __name__ == "__main__":
     unittest.main()
