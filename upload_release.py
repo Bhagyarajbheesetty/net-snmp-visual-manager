@@ -55,6 +55,7 @@ def main():
         "### Features & Highlights\n"
         "- **SNMPv1 / SNMPv2c / SNMPv3 USM Support**: MD5, SHA, SHA256, DES, AES with quick connection tests.\n"
         "- **Visual MIB Tree & Browser**: Explore 65+ bundled MIBs and easily load external vendor MIBs.\n"
+        "- **NDU-Style SET Options & Template C Guidance**: Live integer enum hints, interactive quick-fill pills, GET read status codes, and timing alert callouts.\n"
         "- **Live Walk & BulkWalk Operations**: Fast, adaptive walk with gap detection and strict OID sequencing.\n"
         "- **Native Windows Save As Dialog**: Reliable export directly to your chosen folder.\n"
         "- **Clean Data Architecture**: Strict separation between `register.json` and `snmp_manager.db`.\n\n"
