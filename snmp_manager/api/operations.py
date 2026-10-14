@@ -1,5 +1,5 @@
-from fastapi import APIRouter, HTTPException, Depends
-from typing import List, Optional
+from fastapi import APIRouter, HTTPException, Depends, Query
+from typing import List, Optional, Dict
 from pydantic import BaseModel
 from database import get_db, row_to_dict
 from snmp.process import process_runner
@@ -162,3 +162,91 @@ def _parse_snmp_output(output: str):
     if m2:
         return m2.group(1).strip(), "Value", m2.group(2).strip()
     return output, "", output
+
+
+class OidDetailsResponse(BaseModel):
+    oid: str
+    symbol: str = ""
+    name: str = ""
+    syntax: str = ""
+    type_char: str = "i"
+    max_access: str = ""
+    status: str = ""
+    description: str = ""
+    defval: str = ""
+    enums: Dict[str, int] = {}
+    has_enums: bool = False
+
+
+@router.get("/oid-details", response_model=OidDetailsResponse)
+async def get_oid_details(oid: str = Query(...)):
+    if not oid or not oid.strip():
+        raise HTTPException(status_code=400, detail="OID cannot be empty")
+
+    clean_oid = oid.strip()
+    active_modules = mib_manager.get_loaded_modules()
+    details = process_runner.translate_oid_details(clean_oid, modules=active_modules)
+
+    if details:
+        return OidDetailsResponse(
+            oid=clean_oid,
+            symbol=details.get("symbol", ""),
+            name=details.get("name", "") or clean_oid,
+            syntax=details.get("syntax", ""),
+            type_char=details.get("type_char", "i"),
+            max_access=details.get("max_access", ""),
+            status=details.get("status", ""),
+            description=details.get("description", ""),
+            defval=details.get("defval", ""),
+            enums=details.get("enums", {}),
+            has_enums=details.get("has_enums", False),
+        )
+
+    # Fallback to mib_manager objects cache
+    matched_obj = None
+    target_clean = clean_oid.lower()
+    base_target = target_clean.rsplit(".", 1)[0] if "." in target_clean else target_clean
+
+    for mod in active_modules:
+        objs = mib_manager._objects_cache.get(mod, [])
+        for obj in objs:
+            o_oid = obj.oid.lower()
+            o_name = obj.name.lower()
+            if target_clean in (o_oid, o_name) or base_target in (o_oid, o_name):
+                matched_obj = obj
+                break
+        if matched_obj:
+            break
+
+    if matched_obj:
+        enums = getattr(matched_obj, "enums", {})
+        has_enums = bool(enums)
+        syn = getattr(matched_obj, "syntax", "")
+        type_char = "i" if has_enums or "INTEGER" in syn.upper() else "s"
+        return OidDetailsResponse(
+            oid=clean_oid,
+            symbol=f"{matched_obj.module}::{matched_obj.name}",
+            name=matched_obj.name,
+            syntax=syn,
+            type_char=type_char,
+            max_access=getattr(matched_obj, "max_access", ""),
+            status=getattr(matched_obj, "status", ""),
+            description=getattr(matched_obj, "description", ""),
+            defval="",
+            enums=enums,
+            has_enums=has_enums,
+        )
+
+    return OidDetailsResponse(
+        oid=clean_oid,
+        symbol=clean_oid,
+        name=clean_oid.split(".")[-1] if "." in clean_oid else clean_oid,
+        syntax="",
+        type_char="i",
+        max_access="",
+        status="",
+        description="",
+        defval="",
+        enums={},
+        has_enums=False,
+    )

@@ -251,43 +251,63 @@ class NetSnmpProcessRunner:
     ) -> Optional[dict]:
         """
         Calls snmptranslate -Td to extract comprehensive metadata about an object.
+        Supports numeric OIDs, instance OIDs (e.g. .0, .1), and symbolic names.
         """
-        mod_str = ":".join(modules) if modules else "ALL"
+        mod_str = ";".join(modules) if modules else "+ALL"
         mib_dirs = self.get_mib_dirs_flag(extra_dirs)
 
-        cmd = [self.snmptranslate_exe, "-Td", "-m", mod_str, "-M", mib_dirs, oid_or_name]
-        try:
-            res = subprocess.run(
-                cmd,
-                stdin=subprocess.DEVNULL,
-                capture_output=True,
-                text=True,
-                timeout=5,
-                **self._get_silent_kwargs(),
-            )
-            if res.returncode != 0 or not res.stdout:
-                return None
-            return self._parse_translate_td(res.stdout)
-        except Exception:
-            return None
+        clean = oid_or_name.strip()
+        candidates = [clean]
+        if "." in clean:
+            candidates.append(clean.rsplit(".", 1)[0])
+
+        for cand in candidates:
+            has_alpha = any(c.isalpha() for c in cand)
+            flags_to_try = [["-IR"], []] if has_alpha else [[], ["-IR"]]
+            for flags in flags_to_try:
+                cmd = [self.snmptranslate_exe] + flags + ["-Td", "-m", mod_str, "-M", mib_dirs, cand]
+                try:
+                    res = subprocess.run(
+                        cmd,
+                        stdin=subprocess.DEVNULL,
+                        capture_output=True,
+                        text=True,
+                        timeout=5,
+                        **self._get_silent_kwargs(),
+                    )
+                    if res.returncode == 0 and res.stdout:
+                        parsed = self._parse_translate_td(res.stdout)
+                        if parsed:
+                            parsed["queried_oid"] = clean
+                            return parsed
+                except Exception:
+                    pass
+        return None
 
     def _parse_translate_td(self, output: str) -> dict:
         """Parses snmptranslate -Td text output."""
+        import re
+
         lines = [line.strip() for line in output.split("\n") if line.strip()]
         data = {
             "symbol": "",
+            "name": "",
             "oid": "",
             "syntax": "",
+            "type_char": "i",
             "max_access": "",
             "status": "",
             "description": "",
+            "defval": "",
             "enums": {},
+            "has_enums": False,
             "raw": output
         }
         if lines:
             data["symbol"] = lines[0]
+            base_sym = lines[0].split("::")[-1]
+            data["name"] = base_sym
 
-        import re
         for line in lines:
             if line.startswith("SYNTAX"):
                 data["syntax"] = line.replace("SYNTAX", "").strip()
@@ -295,8 +315,21 @@ class NetSnmpProcessRunner:
                 data["max_access"] = line.replace("MAX-ACCESS", "").strip()
             elif line.startswith("STATUS"):
                 data["status"] = line.replace("STATUS", "").strip()
-            elif line.startswith("DESCRIPTION"):
-                data["description"] = line.replace("DESCRIPTION", "").strip().strip('"')
+
+        # Parse multiline description if present
+        desc_match = re.search(r'DESCRIPTION\s+"([^"]*)"', output, re.DOTALL)
+        if desc_match:
+            data["description"] = re.sub(r'\s+', ' ', desc_match.group(1)).strip()
+        else:
+            for line in lines:
+                if line.startswith("DESCRIPTION"):
+                    data["description"] = line.replace("DESCRIPTION", "").strip().strip('"')
+                    break
+
+        # Parse DEFVAL if present
+        defval_match = re.search(r'DEFVAL\s+\{\s*([^}]+)\s*\}', output)
+        if defval_match:
+            data["defval"] = defval_match.group(1).strip()
 
         # Parse enum values e.g. { enable(1), disable(2) }
         enum_match = re.search(r"\{([^}]+)\}", data["syntax"])
@@ -306,6 +339,27 @@ class NetSnmpProcessRunner:
                 pm = re.search(r"([A-Za-z0-9_-]+)\s*\((-?\d+)\)", pair.strip())
                 if pm:
                     data["enums"][pm.group(1)] = int(pm.group(2))
+
+        data["has_enums"] = bool(data["enums"])
+
+        # Determine type_char mapping for Net-SNMP SET
+        syn = data["syntax"].upper()
+        if data["has_enums"] or "INTEGER" in syn or "ENUM" in syn:
+            data["type_char"] = "i"
+        elif "UNSIGNED32" in syn or "GAUGE32" in syn or "GAUGE" in syn or "COUNTER" in syn:
+            data["type_char"] = "u"
+        elif "TIMETICKS" in syn:
+            data["type_char"] = "t"
+        elif "IPADDRESS" in syn:
+            data["type_char"] = "a"
+        elif "OBJECT IDENTIFIER" in syn or "OID" in syn:
+            data["type_char"] = "o"
+        elif "OCTET STRING" in syn or "DISPLAYSTRING" in syn:
+            data["type_char"] = "s"
+        elif "BITS" in syn:
+            data["type_char"] = "b"
+        else:
+            data["type_char"] = "s"
 
         return data
 

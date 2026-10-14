@@ -469,7 +469,7 @@
           </thead>
           <tbody>
             <template x-for="r in filteredResults" :key="r.seq !== undefined ? r.seq : r.oid">
-              <tr :class="{ 'row-failed': r.status === 'failed' }">
+              <tr :class="{ 'row-failed': r.status === 'failed' }" @dblclick="openSetModal(r.oid)" style="cursor:pointer;" title="Double-click to SET this instance">
                 <td class="oid-col">
                   <span x-text="r.oid"></span>
                   <span x-show="r.status === 'failed'" class="badge-failed" style="margin-left:6px;">FAILED</span>
@@ -577,20 +577,63 @@
   </div>
 
   <!-- SNMP SET Confirmation Modal -->
-  <div class="modal-overlay" x-show="showSetModal" @click.self="showSetModal=false">
-    <div class="modal">
-      <h2>SNMP SET Operation</h2>
-      <div class="form-group">
-        <label>Target Device</label>
-        <div class="mono text-sm" x-text="selectedDevice ? `${selectedDevice.name} (${selectedDevice.ip_address})` : ''"></div>
+  <!-- SNMP SET Confirmation Modal (NDU-style Integer Hint & Value Selection) -->
+  <div class="modal-overlay" x-show="showSetModal" @click.self="showSetModal=false" style="display:none;" x-cloak>
+    <div class="modal" style="width:500px; max-width:92vw;">
+      <div class="flex items-center justify-between mb-3" style="border-bottom: 1px solid var(--border-color); padding-bottom: 8px;">
+        <h2 style="margin:0; font-size:1.15rem; display:flex; align-items:center; gap:8px;">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
+          Set
+        </h2>
+        <span class="badge" style="background:#e0f2fe; color:#0369a1; font-weight:600; font-size:0.75rem;" x-text="setForm.syntaxName || 'INTEGER'"></span>
       </div>
-      <div class="form-group">
-        <label>Target OID / Object</label>
-        <input type="text" x-model="setForm.oid" style="font-family:monospace;">
+
+      <div class="form-group mb-2">
+        <label style="font-size:0.8rem; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.5px;">Target Device</label>
+        <div class="mono text-sm" style="font-weight:600;" x-text="selectedDevice ? `${selectedDevice.name} (${selectedDevice.ip_address})` : ''"></div>
       </div>
-      <div class="form-group">
-        <label>Data Type (Net-SNMP type)</label>
-        <select x-model="setForm.type">
+
+      <div class="form-group mb-2">
+        <label style="font-size:0.8rem; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.5px;">Instance / Target OID</label>
+        <input type="text" x-model="setForm.oid" @input.debounce.300ms="fetchOidDetails(setForm.oid)" style="font-family:monospace; font-size:0.9rem;" placeholder="e.g. httpsAccessControl.0 or 1.3.6.1.4.1.841.1.1.2.7.3.0">
+      </div>
+
+      <div class="form-group mb-2" x-show="setForm.syntaxName">
+        <label style="font-size:0.8rem; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.5px;">Syntax</label>
+        <div class="mono text-xs" style="background:#f1f5f9; padding:6px 10px; border-radius:4px; border:1px solid #cbd5e1; color:#1e293b; word-break:break-all; font-weight:600;" x-text="setForm.syntaxName"></div>
+      </div>
+
+      <!-- Enum Hint Dropdown (When OID syntax provides integer enums like enable(1), disable(2)) -->
+      <div class="form-group mb-2" x-show="setForm.hasEnums">
+        <label style="font-weight:600; display:flex; justify-content:space-between; align-items:center;">
+          <span>Value</span>
+          <span style="font-size:0.75rem; color:#0284c7; font-weight:normal;">MIB Integer Hint</span>
+        </label>
+        <select x-model="setForm.selectedEnum" @change="onSetEnumChange()" style="font-weight:600; font-family:monospace; font-size:0.95rem; border-color:#0284c7;">
+          <template x-for="(val, name) in setForm.enums" :key="val">
+            <option :value="String(val)" x-text="`${name} (${val})`"></option>
+          </template>
+          <option value="__custom__">Another value</option>
+        </select>
+      </div>
+
+      <!-- Custom Value Input (When no enums or when user selects 'Another value') -->
+      <div class="form-group mb-2" x-show="!setForm.hasEnums || setForm.selectedEnum === '__custom__'">
+        <label style="font-weight:600;">
+          <span x-text="setForm.hasEnums ? 'Custom Integer Value' : 'Proposed Value'"></span>
+        </label>
+        <input type="text" x-model="setForm.customValue" @input="onSetCustomValueInput()" :placeholder="setForm.hasEnums ? 'Enter integer, e.g. 1' : 'e.g. 1, 100, hello, 192.168.1.1'">
+      </div>
+
+      <!-- Hint / Description -->
+      <div class="form-group mb-2" x-show="setForm.description" style="max-height:85px; overflow-y:auto; background:#f8fafc; border:1px solid #e2e8f0; border-radius:4px; padding:6px 8px;">
+        <span style="font-size:0.72rem; font-weight:600; color:#64748b; text-transform:uppercase;">Hint:</span>
+        <div style="font-size:0.78rem; color:#475569; white-space:pre-wrap; margin-top:2px;" x-text="setForm.description"></div>
+      </div>
+
+      <div class="form-group mb-2">
+        <label style="font-size:0.8rem; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.5px;">Data Type (Net-SNMP type)</label>
+        <select x-model="setForm.type" :disabled="setForm.hasEnums && setForm.selectedEnum !== '__custom__'">
           <option value="i">INTEGER / Integer32 (i)</option>
           <option value="u">Unsigned32 / Gauge32 (u)</option>
           <option value="t">TimeTicks (t)</option>
@@ -602,19 +645,19 @@
           <option value="b">BITS (b)</option>
         </select>
       </div>
-      <div class="form-group">
-        <label>Proposed Value</label>
-        <input type="text" x-model="setForm.value" placeholder="e.g. 1, 100, hello, 192.168.1.1">
-      </div>
-      <div class="form-group">
-        <label>
-          <input type="checkbox" x-model="setForm.verify_get" style="width:auto; margin-right:6px;">
-          Verify with GET after SET
+
+      <div class="form-group mb-3">
+        <label style="cursor:pointer; display:flex; align-items:center;">
+          <input type="checkbox" x-model="setForm.verify_get" style="width:auto; margin-right:8px;">
+          <span style="font-size:0.85rem;">Verify with GET after SET</span>
         </label>
       </div>
-      <div class="flex gap-2 mt-4" style="justify-content:flex-end;">
+
+      <div class="flex gap-2" style="justify-content:flex-end;">
         <button class="secondary" @click="showSetModal=false">Cancel</button>
-        <button class="success" @click="confirmAndExecuteSet()">Execute SET</button>
+        <button class="success" @click="confirmAndExecuteSet()" :disabled="setRunning">
+          <span x-text="setRunning ? 'Executing...' : 'OK'"></span>
+        </button>
       </div>
     </div>
   </div>
@@ -742,8 +785,21 @@ function snmpApp() {
     toast: { show: false, message: '', type: 'success' },
     toastTimer: null,
     deviceForm: null,
-    setForm: { oid: '', type: 'i', value: '', verify_get: true },
     mibSourceDir: '',
+    setForm: {
+      oid: '',
+      type: 'i',
+      value: '',
+      selectedEnum: '',
+      customValue: '',
+      enums: {},
+      hasEnums: false,
+      syntaxName: '',
+      description: '',
+      defval: '',
+      loadingDetails: false,
+      verify_get: true
+    },
     treeData: [],
     treeSearch: '',
     expandedNodes: {},
@@ -1295,8 +1351,10 @@ function snmpApp() {
       this.executeGet();
     },
     treeActionSet() {
+      const node = this.contextMenu.node;
       this.closeContextMenu();
-      this.openSetModal();
+      const targetOid = node ? (node.is_column ? `${node.oid}.1` : (node.is_table ? node.oid : `${node.oid}.0`)) : null;
+      this.openSetModal(targetOid);
     },
     async treeActionCopyOid() {
       const node = this.contextMenu.node;
@@ -1461,27 +1519,107 @@ function snmpApp() {
         await this.loadHistory();
       }
     },
-    openSetModal() {
+    async fetchOidDetails(targetOid) {
+      const oidToFetch = (targetOid || this.setForm.oid || '').trim();
+      if (!oidToFetch) return;
+      this.setForm.loadingDetails = true;
+      try {
+        const details = await this.api(`/api/operations/oid-details?oid=${encodeURIComponent(oidToFetch)}`);
+        if (details && (this.setForm.oid || '').trim() === oidToFetch) {
+          this.setForm.syntaxName = details.syntax || '';
+          this.setForm.description = details.description || '';
+          this.setForm.defval = details.defval || '';
+          this.setForm.enums = details.enums || {};
+          this.setForm.hasEnums = !!(details.has_enums && Object.keys(this.setForm.enums).length > 0);
+          if (details.type_char) {
+            this.setForm.type = details.type_char;
+          }
+          if (this.setForm.hasEnums) {
+            const entries = Object.entries(this.setForm.enums);
+            let chosenVal = entries.length > 0 ? String(entries[0][1]) : '';
+            if (this.setForm.defval && this.setForm.enums[this.setForm.defval] !== undefined) {
+              chosenVal = String(this.setForm.enums[this.setForm.defval]);
+            }
+            this.setForm.selectedEnum = chosenVal;
+            this.setForm.value = chosenVal;
+            this.setForm.type = 'i';
+          } else {
+            this.setForm.selectedEnum = '__custom__';
+            if (this.setForm.customValue) {
+              this.setForm.value = String(this.setForm.customValue).trim();
+            }
+          }
+        }
+      } catch (e) {
+        console.warn('Failed to fetch OID details:', e);
+      } finally {
+        this.setForm.loadingDetails = false;
+      }
+    },
+    onSetEnumChange() {
+      if (this.setForm.selectedEnum === '__custom__') {
+        this.setForm.value = (this.setForm.customValue || '').trim();
+      } else {
+        this.setForm.value = String(this.setForm.selectedEnum);
+        this.setForm.type = 'i';
+      }
+    },
+    onSetCustomValueInput() {
+      if (this.setForm.selectedEnum === '__custom__' || !this.setForm.hasEnums) {
+        this.setForm.value = (this.setForm.customValue || '').trim();
+      }
+    },
+    openSetModal(targetOid) {
       if (this.isBusy) {
         this.showToast('An SNMP operation is already in progress. Click Stop to cancel.', 'error');
         return;
       }
       if (!this.selectedDevice) { this.showToast('Select a device first', 'error'); return; }
-      if (this.setForm.oid !== this.walkFrom) {
-        this.setForm.oid = this.walkFrom;
-        this.setForm.value = '';
-        if (this.selectedObject) {
-          this.setForm.type = this.mapSyntaxToType(this.selectedObject.syntax);
+
+      const newOid = targetOid ? targetOid.trim() : (this.walkFrom || '').trim();
+      this.setForm.oid = newOid;
+      this.setForm.value = '';
+      this.setForm.customValue = '';
+      this.setForm.selectedEnum = '';
+      this.setForm.enums = {};
+      this.setForm.hasEnums = false;
+      this.setForm.syntaxName = '';
+      this.setForm.description = '';
+      this.setForm.defval = '';
+
+      if (this.selectedObject) {
+        this.setForm.type = this.mapSyntaxToType(this.selectedObject.syntax);
+        if (this.selectedObject.enums && Object.keys(this.selectedObject.enums).length > 0) {
+          this.setForm.enums = this.selectedObject.enums;
+          this.setForm.hasEnums = true;
+          this.setForm.syntaxName = this.selectedObject.syntax;
+          const firstVal = Object.values(this.selectedObject.enums)[0];
+          this.setForm.selectedEnum = String(firstVal);
+          this.setForm.value = String(firstVal);
+          this.setForm.type = 'i';
         }
       }
+
       this.showSetModal = true;
+      if (newOid) {
+        this.fetchOidDetails(newOid);
+      }
     },
     async confirmAndExecuteSet() {
       if (this.isBusy) {
         this.showToast('An SNMP operation is already in progress. Click Stop to cancel.', 'error');
         return;
       }
-      if (!this.setForm.value) { this.showToast('Enter a value to SET', 'error'); return; }
+      if (this.setForm.hasEnums && this.setForm.selectedEnum !== '__custom__') {
+        this.setForm.value = String(this.setForm.selectedEnum);
+      } else {
+        const val = this.setForm.customValue !== undefined && this.setForm.customValue !== null && this.setForm.customValue !== '' ? this.setForm.customValue : this.setForm.value;
+        this.setForm.value = String(val !== undefined && val !== null ? val : '').trim();
+      }
+      if (this.setForm.value === '') {
+        this.showToast('Enter or select a value to SET', 'error');
+        return;
+      }
       this.setRunning = true;
       try {
         this.showToast(`Executing SET on ${this.setForm.oid}...`);

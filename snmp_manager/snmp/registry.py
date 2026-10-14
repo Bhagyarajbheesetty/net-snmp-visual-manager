@@ -443,10 +443,16 @@ class UnifiedRegistry:
         If ok is False, copying must NOT proceed to avoid overwriting unmanaged files.
         """
         norm_orig = os.path.realpath(os.path.abspath(original_path)).lower()
+        orig_hash = compute_file_hash(original_path)
         with self._lock:
             for dest in destination_paths:
                 if not os.path.exists(dest):
                     continue
+                # If destination file already has identical content, it's the exact same file and safe to reuse
+                if orig_hash and os.path.isfile(dest):
+                    dest_hash = compute_file_hash(dest)
+                    if dest_hash == orig_hash:
+                        continue
                 # If it exists, verify if it is already tracked as a managed copy of the SAME original source
                 norm_dest = os.path.realpath(os.path.abspath(dest)).lower()
                 dest_rec = None

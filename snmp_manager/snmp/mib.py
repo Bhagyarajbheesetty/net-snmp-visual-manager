@@ -783,6 +783,7 @@ class MibManager:
                     "module": obj.module,
                     "syntax": obj.syntax,
                     "max_access": obj.max_access,
+                    "enums": getattr(obj, "enums", {}),
                     "is_table": obj.is_table,
                     "is_column": obj.is_column,
                     "children": []
