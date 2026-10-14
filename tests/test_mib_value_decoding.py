@@ -399,8 +399,8 @@ def test_raw_values_remain_separated_from_display_values():
     print("[PASS] test_raw_values_remain_separated_from_display_values")
 
 
-def test_bulk_matching_against_nudesign_export_samples():
-    """10. Verify known samples directly matching NuDesign Visual MIBrowser Pro 16.0 export."""
+def test_bulk_matching_against_standard_export_samples():
+    """10. Verify known samples directly matching reference MIB browser exports."""
     client = get_test_client()
     test_cases = [
         ("1.3.6.1.4.1.841.1.1.1.1.1.1.1.1.1", Gauge32(1), "wirelessIfPropertiesTableIndex", "1", "Unsigned32", "1"),
@@ -419,7 +419,7 @@ def test_bulk_matching_against_nudesign_export_samples():
         assert vb.display_type == exp_disp_type, f"Expected {exp_disp_type}, got {vb.display_type}"
         assert vb.display_value == exp_disp_val, f"Expected {exp_disp_val}, got {vb.display_value}"
 
-    print("[PASS] test_bulk_matching_against_nudesign_export_samples")
+    print("[PASS] test_bulk_matching_against_standard_export_samples")
 
 
 def test_null_padded_octet_string_decoding():
@@ -447,7 +447,7 @@ if __name__ == "__main__":
         test_timeticks_formatting()
         test_multi_index_table_resolution()
         test_raw_values_remain_separated_from_display_values()
-        test_bulk_matching_against_nudesign_export_samples()
+        test_bulk_matching_against_standard_export_samples()
         test_null_padded_octet_string_decoding()
         print("============================================================")
         print("ALL 11 MIB VALUE DECODING TESTS PASSED SUCCESSFULLY!")

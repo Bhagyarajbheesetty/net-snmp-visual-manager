@@ -10,7 +10,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [1.0.0] - 2026-10-14
 
 ### Added
-- **NDU-Style SET Options with Integer Enum Hints & Template C Structured Guidance**:
+- **Intuitive SET Options with Integer Enum Hints & Template C Structured Guidance**:
   - Implemented automatic extraction of MIB enumeration hints (`SYNTAX INTEGER { label(val), ... }`) for SNMP SET operations.
   - **Template C Structured Guidance Card**: Dissects complex MIB descriptions into structured visual sections:
     - **Clean Summary**: Core statement of parameter purpose without run-on text.
@@ -20,7 +20,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
     - **Operational / Timing Callouts**: Prominent warning callout for operations requiring delays or reboot intervals (e.g., commit operations needing 3s–60s).
   - **Smart Free-Text SET Extraction**: For MIB parameters without formal ASN.1 enums (e.g., `sysMgmtCfgCommit` with `SYNTAX Unsigned32`), automatically parses SET options and GET codes directly from description text, populating both the dropdown and quick-fill pills while preserving type safety (`type_char='u'` for `Unsigned32`).
   - Added new REST API endpoint `GET /api/operations/oid-details` that dynamically resolves syntax, enum dictionaries, structured description sections (`description_details`), parameter descriptions, default values (`DEFVAL`), and type flags for any target OID (numeric, instance `.0`, or symbolic name).
-  - Redesigned the SNMP SET dialog to mirror NDU MIB browser conventions:
+  - Redesigned the SNMP SET dialog with modern MIB browser conventions:
     - **Instance**: Target OID / symbol with live syntax inspection.
     - **Syntax Box**: Full ASN.1 syntax badge (e.g., `INTEGER {enable(1), disable(2)}`).
     - **Value Dropdown**: Smart selection of enum values (`enable (1)`, `disable (2)`, etc.) alongside an `"Another value"` option for custom integer input.
