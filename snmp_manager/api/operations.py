@@ -1,5 +1,5 @@
 from fastapi import APIRouter, HTTPException, Depends, Query
-from typing import List, Optional, Dict
+from typing import List, Optional, Dict, Any
 from pydantic import BaseModel
 from database import get_db, row_to_dict
 from snmp.process import process_runner
@@ -176,6 +176,7 @@ class OidDetailsResponse(BaseModel):
     defval: str = ""
     enums: Dict[str, int] = {}
     has_enums: bool = False
+    description_details: Optional[Dict[str, Any]] = None
 
 
 @router.get("/oid-details", response_model=OidDetailsResponse)
@@ -200,6 +201,7 @@ async def get_oid_details(oid: str = Query(...)):
             defval=details.get("defval", ""),
             enums=details.get("enums", {}),
             has_enums=details.get("has_enums", False),
+            description_details=details.get("description_details"),
         )
 
     # Fallback to mib_manager objects cache
@@ -220,6 +222,10 @@ async def get_oid_details(oid: str = Query(...)):
 
     if matched_obj:
         enums = getattr(matched_obj, "enums", {})
+        raw_desc = getattr(matched_obj, "description", "")
+        desc_details = process_runner.parse_description_sections(raw_desc) if raw_desc else None
+        if not enums and desc_details and desc_details.get("set_options"):
+            enums = desc_details["set_options"]
         has_enums = bool(enums)
         syn = getattr(matched_obj, "syntax", "")
         type_char = "i" if has_enums or "INTEGER" in syn.upper() else "s"
@@ -231,10 +237,11 @@ async def get_oid_details(oid: str = Query(...)):
             type_char=type_char,
             max_access=getattr(matched_obj, "max_access", ""),
             status=getattr(matched_obj, "status", ""),
-            description=getattr(matched_obj, "description", ""),
+            description=desc_details.get("formatted_text") if desc_details else raw_desc,
             defval="",
             enums=enums,
             has_enums=has_enums,
+            description_details=desc_details,
         )
 
     return OidDetailsResponse(
@@ -249,4 +256,5 @@ async def get_oid_details(oid: str = Query(...)):
         defval="",
         enums={},
         has_enums=False,
+        description_details=None,
     )

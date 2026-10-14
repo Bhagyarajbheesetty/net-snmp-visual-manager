@@ -625,10 +625,72 @@
         <input type="text" x-model="setForm.customValue" @input="onSetCustomValueInput()" :placeholder="setForm.hasEnums ? 'Enter integer, e.g. 1' : 'e.g. 1, 100, hello, 192.168.1.1'">
       </div>
 
-      <!-- Hint / Description -->
-      <div class="form-group mb-2" x-show="setForm.description" style="max-height:85px; overflow-y:auto; background:#f8fafc; border:1px solid #e2e8f0; border-radius:4px; padding:6px 8px;">
-        <span style="font-size:0.72rem; font-weight:600; color:#64748b; text-transform:uppercase;">Hint:</span>
-        <div style="font-size:0.78rem; color:#475569; white-space:pre-wrap; margin-top:2px;" x-text="setForm.description"></div>
+      <!-- Template C: Structured MIB Guidance & Hint Card -->
+      <div class="form-group mb-2" x-show="setForm.description || (setForm.descDetails && (setForm.descDetails.summary || setForm.descDetails.note))" style="background:var(--bg3); border:1px solid var(--border); border-radius:6px; padding:8px 10px; max-height:200px; overflow-y:auto;">
+        <div class="flex items-center justify-between mb-1" style="border-bottom:1px solid var(--border); padding-bottom:4px;">
+          <span style="font-size:11px; font-weight:600; color:var(--text2); text-transform:uppercase; letter-spacing:0.5px; display:flex; align-items:center; gap:5px;">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/></svg>
+            OID Guidance & Description
+          </span>
+          <span class="badge" style="font-size:9px; background:var(--bg2); color:var(--text2); border:1px solid var(--border);" x-show="setForm.descDetails && Object.keys(setForm.descDetails.set_options || {}).length > 0">Structured</span>
+        </div>
+
+        <!-- Structured View (Template C) -->
+        <template x-if="setForm.descDetails && (setForm.descDetails.summary || Object.keys(setForm.descDetails.set_options || {}).length > 0 || Object.keys(setForm.descDetails.get_options || {}).length > 0 || setForm.descDetails.note)">
+          <div>
+            <!-- Summary / Purpose -->
+            <div x-show="setForm.descDetails.summary" style="font-size:12px; color:var(--text); line-height:1.4; margin-bottom:8px;" x-text="setForm.descDetails.summary"></div>
+
+            <!-- Allowed SET Values (Quick-Fill Interactive Pills) -->
+            <div x-show="setForm.descDetails.set_options && Object.keys(setForm.descDetails.set_options).length > 0" style="margin-bottom:8px;">
+              <div style="font-size:10px; font-weight:600; text-transform:uppercase; letter-spacing:0.5px; color:var(--text2); margin-bottom:4px;">
+                Allowed SET Values (Click to fill):
+              </div>
+              <div class="flex" style="flex-wrap:wrap; gap:6px;">
+                <template x-for="(val, label) in setForm.descDetails.set_options" :key="val">
+                  <button type="button" @click="selectQuickSetValue(val)" 
+                    :style="String(setForm.value) === String(val) ? 'background:var(--accent); color:#ffffff; border-color:var(--accent);' : 'background:var(--bg2); color:var(--text); border:1px solid var(--border);'" 
+                    style="cursor:pointer; border-radius:12px; font-size:11px; padding:2px 8px; transition:all 0.15s ease; display:inline-flex; align-items:center; gap:5px;">
+                    <span :style="String(setForm.value) === String(val) ? 'background:rgba(255,255,255,0.25);' : 'background:var(--hover);'" style="padding:0px 4px; border-radius:4px; font-family:monospace; font-weight:bold;" x-text="val"></span>
+                    <span x-text="label"></span>
+                  </button>
+                </template>
+              </div>
+            </div>
+
+            <!-- GET Status Codes -->
+            <div x-show="setForm.descDetails.get_options && Object.keys(setForm.descDetails.get_options).length > 0" style="background:var(--bg2); border:1px dashed var(--border); border-radius:4px; padding:6px 8px; margin-bottom:8px;">
+              <div style="font-size:10px; font-weight:600; text-transform:uppercase; letter-spacing:0.5px; color:var(--text2); margin-bottom:4px;">
+                Values Available on GET (Read Status):
+              </div>
+              <div style="display:flex; flex-direction:column; gap:3px;">
+                <template x-for="(code, statusText) in setForm.descDetails.get_options" :key="code">
+                  <div style="display:flex; align-items:baseline; gap:6px; font-size:11px;">
+                    <span style="font-family:monospace; font-weight:bold; color:var(--green); min-width:30px;" x-text="code"></span>
+                    <span style="color:var(--text2);" x-text="statusText"></span>
+                  </div>
+                </template>
+              </div>
+            </div>
+
+            <!-- Related OID Notice -->
+            <div x-show="setForm.descDetails.related" style="font-size:11px; color:var(--text2); margin-bottom:6px; display:flex; align-items:flex-start; gap:6px;">
+              <span style="color:var(--accent); font-weight:600; flex-shrink:0;">ℹ️</span>
+              <span x-text="setForm.descDetails.related"></span>
+            </div>
+
+            <!-- Operational Warning / Note Callout -->
+            <div x-show="setForm.descDetails.note" style="background:rgba(154, 103, 0, 0.08); border:1px solid var(--yellow); border-left:3px solid var(--yellow); border-radius:4px; padding:6px 8px; font-size:11px; color:var(--text); line-height:1.35; margin-top:4px;">
+              <span style="color:var(--yellow); font-weight:bold; margin-right:4px;">⏱️ Note:</span>
+              <span x-text="setForm.descDetails.note"></span>
+            </div>
+          </div>
+        </template>
+
+        <!-- Fallback plain text (when structured parsing yields simple text or fallback) -->
+        <template x-if="!setForm.descDetails || (!setForm.descDetails.summary && Object.keys(setForm.descDetails.set_options || {}).length === 0 && !setForm.descDetails.note)">
+          <div style="font-size:11px; color:var(--text2); white-space:pre-wrap; line-height:1.4;" x-text="setForm.description"></div>
+        </template>
       </div>
 
       <div class="form-group mb-2">
@@ -797,6 +859,7 @@ function snmpApp() {
       syntaxName: '',
       description: '',
       defval: '',
+      descDetails: null,
       loadingDetails: false,
       verify_get: true
     },
@@ -1530,6 +1593,7 @@ function snmpApp() {
           this.setForm.description = details.description || '';
           this.setForm.defval = details.defval || '';
           this.setForm.enums = details.enums || {};
+          this.setForm.descDetails = details.description_details || null;
           this.setForm.hasEnums = !!(details.has_enums && Object.keys(this.setForm.enums).length > 0);
           if (details.type_char) {
             this.setForm.type = details.type_char;
@@ -1542,7 +1606,9 @@ function snmpApp() {
             }
             this.setForm.selectedEnum = chosenVal;
             this.setForm.value = chosenVal;
-            this.setForm.type = 'i';
+            if (!details.type_char) {
+              this.setForm.type = 'i';
+            }
           } else {
             this.setForm.selectedEnum = '__custom__';
             if (this.setForm.customValue) {
@@ -1556,12 +1622,24 @@ function snmpApp() {
         this.setForm.loadingDetails = false;
       }
     },
+    selectQuickSetValue(val) {
+      const strVal = String(val);
+      this.setForm.value = strVal;
+      if (this.setForm.hasEnums && this.setForm.enums) {
+        const found = Object.values(this.setForm.enums).map(String).includes(strVal);
+        if (found) {
+          this.setForm.selectedEnum = strVal;
+          return;
+        }
+      }
+      this.setForm.selectedEnum = '__custom__';
+      this.setForm.customValue = strVal;
+    },
     onSetEnumChange() {
       if (this.setForm.selectedEnum === '__custom__') {
         this.setForm.value = (this.setForm.customValue || '').trim();
       } else {
         this.setForm.value = String(this.setForm.selectedEnum);
-        this.setForm.type = 'i';
       }
     },
     onSetCustomValueInput() {
@@ -1583,6 +1661,7 @@ function snmpApp() {
       this.setForm.selectedEnum = '';
       this.setForm.enums = {};
       this.setForm.hasEnums = false;
+      this.setForm.descDetails = null;
       this.setForm.syntaxName = '';
       this.setForm.description = '';
       this.setForm.defval = '';

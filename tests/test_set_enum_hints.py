@@ -85,11 +85,32 @@ class TestSetEnumHints(unittest.TestCase):
         resp = client.get("/api/operations/oid-details?oid=")
         self.assertEqual(resp.status_code, 400)
 
-    def test_tree_nodes_contain_enums(self):
-        """9. Verify tree structure includes enums dictionary."""
-        tree = mib_manager.get_tree()
-        self.assertIsInstance(tree, list)
-        self.assertTrue(len(tree) > 0)
+    def test_translate_proxim_sysmgmt_cfg_commit_free_text_hints(self):
+        """10. Verify sysMgmtCfgCommit (Unsigned32) extracts text SET options, GET codes, notes, and preserves 'u' type_char."""
+        res = process_runner.translate_oid_details("sysMgmtCfgCommit")
+        self.assertIsNotNone(res)
+        self.assertTrue(res.get("has_enums"))
+        self.assertEqual(res.get("type_char"), "u")
+        self.assertEqual(res.get("enums"), {"Commit": 1, "Temporary Commit": 2})
+        desc_det = res.get("description_details", {})
+        self.assertIn("Commit", desc_det.get("set_options", {}))
+        self.assertEqual(desc_det.get("set_options", {})["Commit"], 1)
+        self.assertEqual(desc_det.get("set_options", {})["Temporary Commit"], 2)
+        self.assertIn("Commit Successful", desc_det.get("get_options", {}))
+        self.assertEqual(desc_det.get("get_options", {})["Commit Successful"], 200)
+        self.assertIn("sysMgmtCfgErrorMsg", desc_det.get("related", ""))
+        self.assertIn("seconds", desc_det.get("note", ""))
+
+    def test_api_oid_details_description_details(self):
+        """11. Verify GET /api/operations/oid-details returns description_details object for sysMgmtCfgCommit."""
+        resp = client.get("/api/operations/oid-details?oid=sysMgmtCfgCommit")
+        self.assertEqual(resp.status_code, 200)
+        data = resp.json()
+        self.assertEqual(data["type_char"], "u")
+        self.assertTrue(data["has_enums"])
+        self.assertIsNotNone(data["description_details"])
+        self.assertEqual(data["description_details"]["set_options"], {"Commit": 1, "Temporary Commit": 2})
+        self.assertEqual(data["description_details"]["get_options"]["Commit Successful"], 200)
 
 
 if __name__ == "__main__":

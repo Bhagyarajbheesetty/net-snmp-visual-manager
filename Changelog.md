@@ -10,19 +10,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [1.0.0] - 2026-10-14
 
 ### Added
-- **NDU-Style SET Options with Integer Enum Hints**:
+- **NDU-Style SET Options with Integer Enum Hints & Template C Structured Guidance**:
   - Implemented automatic extraction of MIB enumeration hints (`SYNTAX INTEGER { label(val), ... }`) for SNMP SET operations.
-  - Added new REST API endpoint `GET /api/operations/oid-details` that dynamically resolves syntax, enum dictionaries, parameter descriptions, default values (`DEFVAL`), and type flags for any target OID (numeric, instance `.0`, or symbolic name).
+  - **Template C Structured Guidance Card**: Dissects complex MIB descriptions into structured visual sections:
+    - **Clean Summary**: Core statement of parameter purpose without run-on text.
+    - **Interactive Quick-Fill SET Pills**: Clickable pills (`[1: Commit]`, `[2: Temporary Commit]`) that immediately fill and select the value.
+    - **GET / Read Status Codes**: Clear tabular display of read status codes (e.g., `200 : Commit Successful`, `201 : Commit Successful and reboot`).
+    - **Related OIDs**: Highlighted references to diagnostic/error objects (e.g., `sysMgmtCfgErrorMsg`).
+    - **Operational / Timing Callouts**: Prominent warning callout for operations requiring delays or reboot intervals (e.g., commit operations needing 3s–60s).
+  - **Smart Free-Text SET Extraction**: For MIB parameters without formal ASN.1 enums (e.g., `sysMgmtCfgCommit` with `SYNTAX Unsigned32`), automatically parses SET options and GET codes directly from description text, populating both the dropdown and quick-fill pills while preserving type safety (`type_char='u'` for `Unsigned32`).
+  - Added new REST API endpoint `GET /api/operations/oid-details` that dynamically resolves syntax, enum dictionaries, structured description sections (`description_details`), parameter descriptions, default values (`DEFVAL`), and type flags for any target OID (numeric, instance `.0`, or symbolic name).
   - Redesigned the SNMP SET dialog to mirror NDU MIB browser conventions:
     - **Instance**: Target OID / symbol with live syntax inspection.
     - **Syntax Box**: Full ASN.1 syntax badge (e.g., `INTEGER {enable(1), disable(2)}`).
     - **Value Dropdown**: Smart selection of enum values (`enable (1)`, `disable (2)`, etc.) alongside an `"Another value"` option for custom integer input.
-    - **Hint Box**: Live parameter instructions and guidance extracted directly from the MIB `DESCRIPTION`.
-    - **Data Type**: Automatically locked to `INTEGER (i)` when an enum option is chosen to prevent type mismatch errors.
+    - **Template C Guidance Card**: Structured guidance extracted directly from the MIB `DESCRIPTION`.
+    - **Data Type**: Automatically locked to `INTEGER (i)` or `Unsigned32 (u)` according to syntax when an option is chosen to prevent type mismatch errors.
   - Added quick-access triggers for SET operations:
     - **Double-Click**: Double-clicking any row in the walk results table immediately opens the SET dialog for that OID instance with enum options pre-populated.
     - **MIB Tree Context Menu**: Right-clicking any object node in the hierarchical tree and selecting **SET...** opens the dialog with instance targeting (`.0` or `.1`).
-  - Added unit test suite `tests/test_set_enum_hints.py` covering numeric OIDs, instance OIDs, symbolic names, API responses, and tree node structures (9/9 passed).
+  - Added unit test suite `tests/test_set_enum_hints.py` covering numeric OIDs, instance OIDs, symbolic names, free-text extraction on `sysMgmtCfgCommit`, API responses, and tree node structures (10/10 passed).
 - **Safe Hash-Based Destination Re-Use in MIB Manager**:
   - Enhanced `check_destination_collision` in `UnifiedRegistry` to compare SHA-256 hashes of destination files. When an identical file already exists on disk from an existing installation or previous reload, it is safely reused without throwing false-positive overwrite collisions.
 - **Smart Null-Terminated C-String Decoding**:

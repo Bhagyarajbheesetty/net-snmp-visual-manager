@@ -318,13 +318,16 @@ class NetSnmpProcessRunner:
 
         # Parse multiline description if present
         desc_match = re.search(r'DESCRIPTION\s+"([^"]*)"', output, re.DOTALL)
-        if desc_match:
-            data["description"] = re.sub(r'\s+', ' ', desc_match.group(1)).strip()
-        else:
+        raw_description = desc_match.group(1) if desc_match else ""
+        if not raw_description:
             for line in lines:
                 if line.startswith("DESCRIPTION"):
-                    data["description"] = line.replace("DESCRIPTION", "").strip().strip('"')
+                    raw_description = line.replace("DESCRIPTION", "").strip().strip('"')
                     break
+
+        desc_details = self.parse_description_sections(raw_description)
+        data["description_details"] = desc_details
+        data["description"] = desc_details.get("formatted_text") or desc_details.get("summary") or raw_description
 
         # Parse DEFVAL if present
         defval_match = re.search(r'DEFVAL\s+\{\s*([^}]+)\s*\}', output)
@@ -340,14 +343,18 @@ class NetSnmpProcessRunner:
                 if pm:
                     data["enums"][pm.group(1)] = int(pm.group(2))
 
+        # If formal ASN.1 enums are missing but text description defines SET options (e.g. sysMgmtCfgCommit)
+        if not data["enums"] and desc_details.get("set_options"):
+            data["enums"] = desc_details["set_options"]
+
         data["has_enums"] = bool(data["enums"])
 
         # Determine type_char mapping for Net-SNMP SET
         syn = data["syntax"].upper()
-        if data["has_enums"] or "INTEGER" in syn or "ENUM" in syn:
-            data["type_char"] = "i"
-        elif "UNSIGNED32" in syn or "GAUGE32" in syn or "GAUGE" in syn or "COUNTER" in syn:
+        if "UNSIGNED32" in syn or "GAUGE32" in syn or "GAUGE" in syn or "COUNTER" in syn:
             data["type_char"] = "u"
+        elif data["has_enums"] or "INTEGER" in syn or "ENUM" in syn:
+            data["type_char"] = "i"
         elif "TIMETICKS" in syn:
             data["type_char"] = "t"
         elif "IPADDRESS" in syn:
@@ -362,6 +369,93 @@ class NetSnmpProcessRunner:
             data["type_char"] = "s"
 
         return data
+
+    def parse_description_sections(self, raw_desc: str) -> dict:
+        """
+        Parses free-text MIB descriptions to extract:
+        - summary: clean purpose statement
+        - set_options: {label: int_val} for parameters specifying allowed SET inputs
+        - get_options: {label: int_val} for parameters specifying read/status codes
+        - note: operational warnings, timing requirements (e.g. P.S., Note)
+        - related: related OIDs mentioned for error checking
+        - formatted_text: human-readable formatted description
+        """
+        import re
+
+        if not raw_desc:
+            return {
+                "summary": "",
+                "set_options": {},
+                "get_options": {},
+                "note": "",
+                "related": "",
+                "formatted_text": "",
+            }
+
+        lines = [l.strip() for l in raw_desc.split("\n") if l.strip()]
+        full_text = "\n".join(lines)
+
+        note_text = ""
+        ps_m = re.search(r"(?:P\.S\.?|Note|Warning):\s*(.*)", full_text, re.IGNORECASE | re.DOTALL)
+        if ps_m:
+            note_text = ps_m.group(1).strip()
+            full_text = full_text[:ps_m.start()].strip()
+
+        related_text = ""
+        rel_m = re.search(r"(?:Please check(?: the object)?|Check object|refer to)\s+([A-Za-z0-9_-]+)[^.]*\.?", full_text, re.IGNORECASE)
+        if rel_m:
+            related_text = rel_m.group(0).strip()
+            full_text = (full_text[:rel_m.start()] + " " + full_text[rel_m.end():]).strip()
+
+        # Extract GET status codes if separated
+        get_options = {}
+        get_match = re.search(r"(?:The values available on GET|values available on GET|read values are defined|on GET)[^:]*:(.*?)(?=(?:Please check|Check object|P\.S\.|Note:|$))", full_text, re.IGNORECASE | re.DOTALL)
+        if get_match:
+            get_block = get_match.group(1)
+            for m in re.finditer(r"(\d+)\s*[:\-]\s*([A-Za-z][^\n\r]+)", get_block):
+                val = int(m.group(1))
+                lbl = m.group(2).strip().rstrip(".,;)")
+                get_options[lbl] = val
+            set_part = full_text[:get_match.start()]
+        else:
+            set_part = full_text
+
+        # Extract SET options (e.g. 1 - Commit, 2 - Temporary Commit or 1 - enable and 2 - disable)
+        set_options = {}
+        for m in re.finditer(r"(?:^|[,\n\r\t(]|Select\s+)\s*(\d+)\s*[-:]\s*([A-Za-z][A-Za-z0-9_ /]{1,30})", set_part):
+            val = int(m.group(1))
+            lbl = m.group(2).strip().rstrip(".,;)")
+            lbl = re.sub(r"\s+(?:and|or)$", "", lbl, flags=re.IGNORECASE).strip()
+            if lbl.lower() not in ("commit successful",):
+                set_options[lbl] = val
+
+        # Clean summary
+        summary = set_part
+        for lbl, val in set_options.items():
+            summary = re.sub(rf"(?:^|[,\s])*{val}\s*[-:]\s*{re.escape(lbl)}[,\s]*", " ", summary)
+        summary = re.sub(r"\s+", " ", summary).strip()
+
+        # Build clean formatted text
+        formatted_parts = []
+        if summary:
+            formatted_parts.append(summary)
+        if set_options:
+            formatted_parts.append("Allowed SET Values:\n" + "\n".join(f"  • {v} : {k}" for k, v in set_options.items()))
+        if get_options:
+            formatted_parts.append("Values available on GET:\n" + "\n".join(f"  • {v} : {k}" for k, v in get_options.items()))
+        if related_text:
+            formatted_parts.append(related_text)
+        if note_text:
+            formatted_parts.append(f"Note: {re.sub(r'\s+', ' ', note_text).strip()}")
+
+        return {
+            "summary": summary,
+            "set_options": set_options,
+            "get_options": get_options,
+            "note": re.sub(r"\s+", " ", note_text).strip(),
+            "related": re.sub(r"\s+", " ", related_text).strip(),
+            "formatted_text": "\n\n".join(formatted_parts),
+        }
 
 
 process_runner = NetSnmpProcessRunner()
